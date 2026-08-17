@@ -1,0 +1,77 @@
+flowchart TD
+
+    %% =========================================================================
+    %% ROW 1: INGESTION -> CURATION -> SYNTHESIS (Goes Left to Right ->)
+    %% =========================================================================
+    subgraph ROW1 ["ROW 1: Ingestion & AI Synthesis (Left to Right ➡️)"]
+        direction LR
+
+        subgraph B1 ["1. Ingestion Sources"]
+            In_Raw["<b>Student Prompt / Nightly Scrapers</b><br/>• Rough interview prompt text<br/>• LeetCode / Codeforces / CSES<br/>• Normalizes to Raw Input JSON"]
+        end
+
+        subgraph B2 ["2. Curation & Deduplication"]
+            Curate_Engine["<b>Curation & Semantic Check</b><br/>• LLM cleans & writes constraints<br/>• 384-d vector embeddings<br/>• Cosine Similarity vs 5,000 DB<br/>• Drops duplicate if >= 0.85"]
+        end
+
+        subgraph B3 ["3. Solution & Testcase Generator"]
+            Synth_Engine["<b>Synthesizer Engine</b><br/>• Generates optimal C++, Java, Python<br/>• 10 Standard I/O Test Cases<br/>(3 sample + 4 edge + 3 stress)"]
+        end
+
+        B1 -->|Raw Input| B2
+        B2 -->|Unique Problem| B3
+    end
+
+    %% =========================================================================
+    %% ROW 2: SANDBOX -> MOODLE XML & TAXONOMY (Goes Right to Left ⬅️)
+    %% =========================================================================
+    subgraph ROW2 ["ROW 2: Sandbox Validation & XML Packaging (Right to Left ⬅️)"]
+        direction RL
+
+        subgraph B4 ["4. Docker Execution Sandbox"]
+            Sandbox_Engine["<b>Isolated Security Sandbox</b><br/>• Ephemeral container (128MB RAM, 2s limit)<br/>• Compiles & runs code against stdin<br/>• Verifies 10/10 testcases PASS"]
+        end
+
+        subgraph B5 ["5. Taxonomy & Moodle XML"]
+            XML_Engine["<b>Moodle XML & Category Engine</b><br/>• Auto-tags: $course$/top/DSA/Graphs/BFS<br/>• Builds Moodle Quiz XML (CDATA escaped)"]
+        end
+
+        B4 -->|100% Passed ✅| B5
+    end
+
+    %% =========================================================================
+    %% ROW 3: STAGING -> CI/CD -> PRODUCTION (Goes Left to Right ➡️)
+    %% =========================================================================
+    subgraph ROW3 ["ROW 3: Staging Review, CI/CD & Production (Left to Right ➡️)"]
+        direction LR
+
+        subgraph B6 ["6. Staging & Faculty Review"]
+            Staging_UI["<b>Faculty Curation Dashboard</b><br/>• Isolated StagedQuestion DB table<br/>• Checkbox bulk selection<br/>• Re-route BFS / DFS / DP<br/>• 1-Click Approve to Live DB"]
+        end
+
+        subgraph B7 ["7. CI/CD & Agile Tracker"]
+            CICD_Engine["<b>CI/CD & Progress Tracker</b><br/>• GitHub Actions CI + Playwright E2E<br/>• Jira-Style Milestone Checklist<br/>• Tuesday Kovion Showcase Tracker"]
+        end
+
+        subgraph B8 ["8. Production LMS & Portal"]
+            Prod_Live["<b>Live Student Practice</b><br/>• Production DB on College Server<br/>• Moodle LMS Quiz XML Import<br/>• 5,000+ Placement Students"]
+        end
+
+        B6 -->|Mentor Approval| B7
+        B7 -->|Zero-Downtime Deploy| B8
+    end
+
+    %% =========================================================================
+    %% SNAKE / ZIGZAG CONNECTORS BETWEEN ROWS
+    %% =========================================================================
+    B3 ==>|Step 3 to 4: Turn Down ⬇️| B4
+    B5 ==>|Step 5 to 6: Turn Down ⬇️| B6
+
+    %% STYLING
+    classDef row1Style fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff;
+    classDef row2Style fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#fff;
+    classDef row3Style fill:#14532d,stroke:#4ade80,stroke-width:2px,color:#fff;
+
+    class B1,B2,B3 row1Style;
+    class B4,B5 row2Style;
+    class B6,B7,B8 row3Style;

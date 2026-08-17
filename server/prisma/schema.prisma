@@ -1,0 +1,88 @@
+// Prisma Schema for IntelX Placement Platform & Agile Tracker
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  role          String   @default("Junior Developer")
+  avatarText    String
+  avatarColor   String   @default("#3f7bf6")
+  assignedTrack String   @default("General Development")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  issues        Issue[]
+}
+
+model Module {
+  id          String   @id @default(uuid())
+  name        String
+  layer       String   @default("Layer 1: Ingestion")
+  description String
+  leadId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  issues      Issue[]
+}
+
+model Cycle {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  startDate   String
+  endDate     String
+  status      String   @default("active") // active, upcoming, completed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  issues      Issue[]
+}
+
+model Issue {
+  id                 String   @id @default(uuid())
+  sequenceId         Int      @unique
+  key                String   @unique
+  title              String
+  description        String
+  state              String   @default("todo") // backlog, todo, in_progress, in_review, done
+  priority           String   @default("medium") // urgent, high, medium, low, none
+  moduleId           String
+  module             Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  cycleId            String
+  cycle              Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  assigneeId         String?
+  assignee           Member?  @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  storyPoints        Int      @default(3)
+  acceptanceCriteria String   @default("[]") // JSON stringified array of { id, text, completed }
+  technicalNotes     String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model StagedQuestion {
+  id                 String   @id @default(uuid())
+  title              String
+  description        String
+  source             String   @default("Student_Interview") // Student_Interview, LeetCode, Codeforces, CSES
+  difficulty         String   @default("Medium") // Easy, Medium, Hard
+  suggestedCategory  String
+  confirmedCategory  String?
+  status             String   @default("PENDING_REVIEW") // PENDING_REVIEW, APPROVED, REJECTED
+  similarityScore    Float    @default(0.0)
+  isDuplicate        Boolean  @default(false)
+  timeLimitSeconds   Float    @default(2.0)
+  memoryLimitMb      Int      @default(128)
+  referenceSolution  String   @default("{}") // JSON { language, code }
+  testCases          String   @default("[]") // JSON array of 10 testcases
+  testPassRate       String   @default("10/10 Passed")
+  sandboxStatus      String   @default("VERIFIED") // VERIFIED, FLAKY, PENDING
+  submittedAt        DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

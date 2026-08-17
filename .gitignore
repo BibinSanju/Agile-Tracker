@@ -1,0 +1,52 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node modules
+node_modules
+server/node_modules
+dist
+dist-ssr
+server/dist
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+server/.env
+
+# Editor & OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing & Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Databases
+*.db
+*.db-journal
+dev.db
+dev.db-journal
+server/dev.db
+server/dev.db-journal
+server/prisma/*.db
+server/prisma/*.db-journal
+
+# Documentation media
+docs_and _storage/*.ogg
+docs_and _storage/*.mp3

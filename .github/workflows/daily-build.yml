@@ -1,0 +1,39 @@
+name: ⏰ Daily Build & Regression Check
+
+on:
+  schedule:
+    # Runs automatically every morning at 6:00 AM IST (00:30 UTC)
+    - cron: '30 0 * * *'
+  workflow_dispatch: # Allows manual trigger anytime from GitHub Actions UI
+
+jobs:
+  daily-health-check:
+    name: 🩺 Daily Regression & System Health
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Check out repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🔍 TypeScript Compile Check
+        run: npx tsc --noEmit
+
+      - name: 🏗️ Production Bundle Build Check
+        run: npm run build
+
+      - name: 🎭 Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: 🧪 Run Automated Regression Tests
+        run: npx playwright test
+
+      - name: 🔔 Log Daily Build Success
+        run: echo "✅ Daily Build and Regression Check passed on $(date -u)"

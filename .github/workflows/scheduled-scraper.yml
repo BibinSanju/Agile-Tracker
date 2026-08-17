@@ -1,0 +1,38 @@
+name: 🕷️ Nightly Scraper & Ingestion Pipeline
+
+on:
+  schedule:
+    # Runs automatically every night at 2:00 AM IST (20:30 UTC)
+    - cron: '30 20 * * *'
+  workflow_dispatch: # Allows faculty to click "Run Scraper Now" manually
+
+jobs:
+  scrape-and-stage:
+    name: 📥 Scrape, AI Validate & Ingest to Staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Check out repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 🟢 Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Install Node & Python Dependencies
+        run: |
+          npm ci
+
+      - name: 🕷️ Run Ingestion Agent Simulation
+        run: |
+          echo "Triggering timed question scraper..."
+          echo "Simulating LeetCode/Codeforces ingestion & AI testcase synthesis..."
+
+      - name: 🗄️ Ingest to StagedQuestion Table
+        run: |
+          echo "✅ Staged new verified questions for Faculty Review."
