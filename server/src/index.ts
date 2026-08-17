@@ -12,7 +12,7 @@ import { prisma } from './db.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 // CORS setup (Allows Vercel frontend and local development)
 app.use(cors({
@@ -82,7 +82,7 @@ app.use('/api/staging', stagingRouter);
 app.use('/api/ai', aiRouter);
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 IntelX Platform Backend Server running on http://localhost:${PORT}`);
-  console.log(`📡 Healthcheck available at: http://localhost:${PORT}/api/health`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 IntelX Platform Backend Server running on port ${PORT}`);
+  console.log(`📡 Healthcheck available at: http://0.0.0.0:${PORT}/api/health`);
 });
