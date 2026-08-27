@@ -61,10 +61,10 @@ export default function TrackerDashboard() {
           api.getModules(),
           api.getCycles()
         ]);
-        if (serverIssues && serverIssues.length > 0) setIssues(serverIssues);
-        if (serverMembers && serverMembers.length > 0) setMembers(serverMembers);
-        if (serverModules && serverModules.length > 0) setModules(serverModules);
-        if (serverCycles && serverCycles.length > 0) setCycles(serverCycles);
+        if (serverIssues !== null) setIssues(serverIssues);
+        if (serverMembers !== null) setMembers(serverMembers);
+        if (serverModules !== null) setModules(serverModules);
+        if (serverCycles !== null) setCycles(serverCycles);
       } catch (e) {
         console.warn('Backend offline, using local storage.');
       }
