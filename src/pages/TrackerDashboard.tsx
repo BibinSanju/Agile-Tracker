@@ -437,6 +437,7 @@ export default function TrackerDashboard() {
         <PlaneNewIssueModal 
           modules={modules}
           members={members}
+          cycles={cycles}
           onClose={() => setIsNewIssueOpen(false)}
           onAddIssue={handleAddIssue}
         />

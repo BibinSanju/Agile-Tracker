@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { X, Plus } from 'lucide-react';
-import { PlaneIssue, PlaneModule, PlaneMember, IssueState, IssuePriority } from '../data/planeData';
+import { PlaneIssue, PlaneModule, PlaneMember, PlaneCycle, IssueState, IssuePriority } from '../data/planeData';
 
 interface PlaneNewIssueModalProps {
   modules: PlaneModule[];
   members: PlaneMember[];
+  cycles: PlaneCycle[];
   onClose: () => void;
   onAddIssue: (newIssue: Omit<PlaneIssue, 'id' | 'sequenceId' | 'key' | 'createdAt' | 'updatedAt'>) => void;
 }
 
-export default function PlaneNewIssueModal({ modules, members, onClose, onAddIssue }: PlaneNewIssueModalProps) {
+export default function PlaneNewIssueModal({ modules, members, cycles, onClose, onAddIssue }: PlaneNewIssueModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [moduleId, setModuleId] = useState(modules[0]?.id || 'mod-1');
+  const [moduleId, setModuleId] = useState(modules[0]?.id || '');
   const [state, setState] = useState<IssueState>('todo');
   const [priority, setPriority] = useState<IssuePriority>('medium');
   const [assigneeId, setAssigneeId] = useState(members[0]?.id || '');
@@ -22,6 +23,14 @@ export default function PlaneNewIssueModal({ modules, members, onClose, onAddIss
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    if (!moduleId) {
+      alert("You must create a Module before creating an Issue!");
+      return;
+    }
+    if (!cycles || cycles.length === 0) {
+      alert("You must create a Cycle before creating an Issue!");
+      return;
+    }
 
     const criteriaList = criteriaText
       .split('\n')
@@ -35,7 +44,7 @@ export default function PlaneNewIssueModal({ modules, members, onClose, onAddIss
       state,
       priority,
       moduleId,
-      cycleId: 'cycle-1',
+      cycleId: cycles[0]?.id,
       assigneeId,
       storyPoints: Number(storyPoints),
       acceptanceCriteria: criteriaList.length > 0 ? criteriaList : [
