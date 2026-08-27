@@ -2,6 +2,8 @@ import { PlaneIssue, PlaneMember, PlaneModule, PlaneCycle } from '../data/planeD
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api';
 
+const API_KEY = (import.meta as any).env?.VITE_API_KEY || '';
+
 // Generic fetcher with graceful offline fallback
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T | null> {
   try {
@@ -9,6 +11,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T | nul
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
         ...options?.headers
       }
     });
