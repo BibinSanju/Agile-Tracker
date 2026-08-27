@@ -2,9 +2,9 @@
 
 ---
 
-## 📌 Executive Summary & Tuesday Kovion Showcase Objective
+## 📌 Executive Summary & Tuesday Executive Showcase Objective
 
-* **Target Milestone:** Deliver an end-to-end **Agile Review & Question Staging Portal** with automated **CI/CD, Agentic Validation, and Moodle XML Generation** by **Tuesday** for the executive presentation with **Kovion**.
+* **Target Milestone:** Deliver an end-to-end **Agile Review & Question Staging Portal** with automated **CI/CD, Agentic Validation, and Moodle XML Generation** by **Tuesday** for the executive presentation with **stakeholders**.
 * **Scale & Primary Stakeholders:** 5,000+ placement students, college faculty/mentors, and the junior developer batch.
 * **Core Engineering Philosophy:** **"New Code Runs, Current Code Won't Break"** — strict zero-regression architecture, isolated staging database sandboxes, and automated Playwright test gates.
 * **Hardware Infrastructure:**
@@ -68,7 +68,7 @@ flowchart TD
         end
 
         subgraph B7 ["7. CI/CD & Agile Tracker"]
-            CICD_Engine["<b>CI/CD & Progress Tracker</b><br/>• GitHub Actions CI + Playwright E2E<br/>• Jira-Style Milestone Checklist<br/>• Tuesday Kovion Showcase Tracker"]
+            CICD_Engine["<b>CI/CD & Progress Tracker</b><br/>• GitHub Actions CI + Playwright E2E<br/>• Jira-Style Milestone Checklist<br/>• Tuesday Executive Showcase Tracker"]
         end
 
         subgraph B8 ["8. Production LMS & Portal"]
@@ -185,7 +185,7 @@ Stage 6 (Staging & Review) ──▶ Stage 7 (CI/CD & Agile Tracker) ──▶ S
   * Checkbox bulk selection and category re-assignment.
   * Monaco editor code execution and testcase pass verdicts.
   * Moodle XML download file schema integrity.
-* **3. Agile Project Tracker (Jira-Style):** Interactive milestone checklist for your mentor to track project completion % for the **Tuesday Kovion Showcase**.
+* **3. Agile Project Tracker (Jira-Style):** Interactive milestone checklist for your mentor to track project completion % for the **Tuesday Executive Showcase**.
 
 ---
 
@@ -221,4 +221,4 @@ Stage 6 (Staging & Review) ──▶ Stage 7 (CI/CD & Agile Tracker) ──▶ S
 - [ ] **Task 4.2:** Configure GitHub Actions CI for Linting, Typecheck & Unit Tests *(Monday Afternoon)*
 - [ ] **Task 4.3:** Configure Scheduled Cron Scraper Workflow (`.github/workflows/scraper.yml`) *(Monday Afternoon)*
 - [ ] **Task 4.4:** Write Playwright E2E automated test suite *(Assigned to Junior 5 - Monday)*
-- [ ] **Task 4.5:** Final Polish & Dry Run for Tuesday **Kovion** Company Showcase *(Tuesday Morning)*
+- [ ] **Task 4.5:** Final Polish & Dry Run for Tuesday **Executive** Company Showcase *(Tuesday Morning)*

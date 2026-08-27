@@ -30,7 +30,7 @@ export default function JuniorDelegationTable({ tasks, onTaskClick }: JuniorDele
         <div>
           <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Team Ownership & Junior Delegation Matrix</h3>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Track allocations for Sunday/Monday sprint leading into Tuesday Kovion showcase
+            Track allocations for Sunday/Monday sprint leading into Tuesday Executive showcase
           </p>
         </div>
         <span className="badge-tag" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)' }}>

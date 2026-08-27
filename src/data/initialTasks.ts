@@ -450,7 +450,7 @@ export const INITIAL_TASKS: Task[] = [
   {
     id: 'task-802',
     key: 'PROD-2',
-    title: 'Tuesday Kovion Showcase Live Demo Readiness & Dry Run',
+    title: 'Tuesday Executive Showcase Live Demo Readiness & Dry Run',
     description: 'Perform end-to-end dry run demonstrating rough prompt intake -> AI curation -> sandbox 10/10 check -> checkbox curation -> Moodle XML export -> CI/CD green badge.',
     epicId: 'epic-8',
     epicName: '8. Live Production Server & LMS Practice',

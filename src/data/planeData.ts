@@ -61,11 +61,11 @@ export const DEFAULT_MODULES: PlaneModule[] = [
   { id: 'mod-8', name: '8. Live Production LMS & Local Server', layer: 'Layer 5: Production & LMS', description: 'Dedicated local college server PostgreSQL sync for 5,000 placement students', createdAt: '2026-08-16' }
 ];
 
-// Initial Cycle targeting Kovion Tuesday Showcase
+// Initial Cycle targeting Executive Tuesday Showcase
 export const DEFAULT_CYCLES: PlaneCycle[] = [
   {
     id: 'cycle-1',
-    name: 'Cycle 1: Kovion Showcase Sprint',
+    name: 'Cycle 1: Executive Showcase Sprint',
     description: 'Sprint deliverable targeting Tuesday company showcase: Ingestion, Docker Sandbox, Curation UI, and CI/CD Quality Gate.',
     startDate: '2026-08-14',
     endDate: '2026-08-19',
@@ -449,7 +449,7 @@ export const SEED_ARCHITECTURE_ISSUES: PlaneIssue[] = [
     id: 'iss-20',
     sequenceId: 20,
     key: 'PRTL-20',
-    title: 'Tuesday Kovion Showcase Live Demonstration Dry Run',
+    title: 'Tuesday Executive Showcase Live Demonstration Dry Run',
     description: 'Execute end-to-end rehearsal demonstrating raw prompt intake -> RTX 5070 AI deduplication -> Docker 10/10 check -> checkbox curation -> Moodle XML export -> CI/CD green badge.',
     state: 'todo',
     priority: 'urgent',

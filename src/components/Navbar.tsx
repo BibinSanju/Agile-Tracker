@@ -19,7 +19,7 @@ export default function Navbar() {
     seconds: 15
   });
 
-  // Countdown timer for Tuesday Kovion Showcase
+  // Countdown timer for Tuesday Executive Showcase
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -69,11 +69,11 @@ export default function Navbar() {
 
         {/* Real-time Status Indicators */}
         <div className="navbar-actions">
-          {/* Kovion Showcase Countdown */}
-          <div className="countdown-box" title="Countdown to Tuesday Kovion Company Showcase">
+          {/* Executive Showcase Countdown */}
+          <div className="countdown-box" title="Countdown to Tuesday Executive Company Showcase">
             <Clock size={15} />
             <span>
-              Kovion Showcase: {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
+              Executive Showcase: {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
             </span>
           </div>
 

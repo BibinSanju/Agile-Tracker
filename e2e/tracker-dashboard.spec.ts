@@ -29,7 +29,7 @@ test.describe('Plane-Grade Agile Cockpit & CI/CD Tracker', () => {
 
     // Switch to Cycles
     await page.click('button:has-text("Cycles")');
-    await expect(page.locator('text=Kovion Showcase Sprint').first()).toBeVisible();
+    await expect(page.locator('text=Executive Showcase Sprint').first()).toBeVisible();
   });
 
   test('Clicking issue state icon cycles state and updates progress', async ({ page }) => {

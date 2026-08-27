@@ -80,7 +80,7 @@ flowchart TD
         subgraph L4 ["7. CI/CD & Agile Tracker"]
             CI_1["<b>GitHub Actions CI</b><br/>• Lint & Typecheck (tsc)"]
             CI_2["<b>Playwright E2E Tests</b><br/>• Tests Login, UI & XML"]
-            CI_3["<b>Agile Project Tracker</b><br/>• Milestone checkboxes<br/>• Tuesday Kovion Countdown"]
+            CI_3["<b>Agile Project Tracker</b><br/>• Milestone checkboxes<br/>• Tuesday Executive Countdown"]
             CI_1 --> CI_2 --> CI_3
         end
 

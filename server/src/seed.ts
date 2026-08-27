@@ -25,7 +25,7 @@ async function seed() {
   await prisma.cycle.create({
     data: {
       id: 'cycle-1',
-      name: 'Cycle 1: Kovion Showcase Sprint',
+      name: 'Cycle 1: Executive Showcase Sprint',
       description: 'Sprint deliverable targeting Tuesday company showcase: Ingestion, Docker Sandbox, Curation UI, and CI/CD Quality Gate.',
       startDate: '2026-08-14',
       endDate: '2026-08-19',
@@ -55,7 +55,7 @@ async function seed() {
     { sequenceId: 17, key: 'PRTL-17', title: 'Microsoft Playwright Automated E2E Browser Test Suite', description: 'Write headless browser test specs covering faculty login, checkbox selection, category re-routing, and Moodle XML download validation.', state: 'todo', priority: 'high', moduleId: 'mod-7', cycleId: 'cycle-1', storyPoints: 5, acceptanceCriteria: JSON.stringify([{ id: 'c1', text: 'Automated Playwright tests in e2e/ directory', completed: false }, { id: 'c2', text: 'Verifies checkbox curation and Moodle XML generation', completed: false }]) },
     { sequenceId: 18, key: 'PRTL-18', title: 'Dedicated Local College Server PostgreSQL Sync & Zero-Downtime Migration', description: 'Connect staging promotion webhook to sync approved questions to the dedicated local college server PostgreSQL database for 5,000+ students.', state: 'todo', priority: 'urgent', moduleId: 'mod-8', cycleId: 'cycle-1', storyPoints: 5, acceptanceCriteria: JSON.stringify([{ id: 'c1', text: 'Syncs approved questions with zero downtime for live students', completed: false }, { id: 'c2', text: 'Preserves existing student submission histories and contest ratings', completed: false }]) },
     { sequenceId: 19, key: 'PRTL-19', title: 'Moodle LMS Course Category Direct XML Import Verification', description: 'Verify exported Moodle XML directly in the college Moodle instance under $course$/top/DSA/Graphs/BFS.', state: 'todo', priority: 'high', moduleId: 'mod-8', cycleId: 'cycle-1', storyPoints: 3, acceptanceCriteria: JSON.stringify([{ id: 'c1', text: 'Successfully imports into Moodle Course Quiz Bank', completed: false }, { id: 'c2', text: 'Validates question titles, descriptions, and essay code boxes', completed: false }]) },
-    { sequenceId: 20, key: 'PRTL-20', title: 'Tuesday Kovion Showcase Live Demonstration Dry Run', description: 'Execute end-to-end rehearsal demonstrating raw prompt intake -> RTX 5070 AI deduplication -> Docker 10/10 check -> checkbox curation -> Moodle XML export -> CI/CD green badge.', state: 'todo', priority: 'urgent', moduleId: 'mod-8', cycleId: 'cycle-1', storyPoints: 8, acceptanceCriteria: JSON.stringify([{ id: 'c1', text: 'Demonstration completes in < 4 minutes', completed: false }, { id: 'c2', text: 'Green CI/CD status badge verified', completed: false }, { id: 'c3', text: 'Staging to live promotion demonstrated cleanly', completed: false }]) }
+    { sequenceId: 20, key: 'PRTL-20', title: 'Tuesday Executive Showcase Live Demonstration Dry Run', description: 'Execute end-to-end rehearsal demonstrating raw prompt intake -> RTX 5070 AI deduplication -> Docker 10/10 check -> checkbox curation -> Moodle XML export -> CI/CD green badge.', state: 'todo', priority: 'urgent', moduleId: 'mod-8', cycleId: 'cycle-1', storyPoints: 8, acceptanceCriteria: JSON.stringify([{ id: 'c1', text: 'Demonstration completes in < 4 minutes', completed: false }, { id: 'c2', text: 'Green CI/CD status badge verified', completed: false }, { id: 'c3', text: 'Staging to live promotion demonstrated cleanly', completed: false }]) }
   ];
 
   for (const issue of initialIssues) {
