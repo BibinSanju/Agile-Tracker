@@ -7,6 +7,10 @@ export const issuesRouter = Router();
 issuesRouter.get('/', async (req: Request, res: Response) => {
   try {
     const { state, priority, moduleId, assigneeId, cycleId } = req.query;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+
     const where: any = {};
     if (state && typeof state === 'string') where.state = state;
     if (priority && typeof priority === 'string') where.priority = priority;
@@ -17,6 +21,8 @@ issuesRouter.get('/', async (req: Request, res: Response) => {
     const issues = await prisma.issue.findMany({
       where,
       orderBy: { sequenceId: 'asc' },
+      take: limit,
+      skip,
       include: {
         assignee: true,
         module: true,
@@ -44,8 +50,11 @@ issuesRouter.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Title, moduleId, and cycleId are required.' });
     }
 
-    const count = await prisma.issue.count();
-    const sequenceId = count + 1;
+    const lastIssue = await prisma.issue.findFirst({
+      orderBy: { sequenceId: 'desc' },
+      select: { sequenceId: true }
+    });
+    const sequenceId = (lastIssue?.sequenceId || 0) + 1;
     const key = `PRTL-${sequenceId}`;
 
     const newIssue = await prisma.issue.create({

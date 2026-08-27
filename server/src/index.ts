@@ -13,15 +13,33 @@ dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
+const API_KEY = process.env.API_KEY;
 
 // CORS setup (Allows Vercel frontend and local development)
 app.use(cors({
-  origin: '*',
+  origin: process.env.FRONTEND_URL || '*',
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
 }));
 
 app.use(express.json());
+
+// Basic API Key Authentication Middleware
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path === '/api/health') {
+    next();
+    return;
+  }
+  
+  if (API_KEY) {
+    const providedKey = req.header('x-api-key');
+    if (providedKey !== API_KEY) {
+      res.status(401).json({ success: false, error: 'Unauthorized: Invalid API Key' });
+      return;
+    }
+  }
+  next();
+});
 
 // Root route
 app.get('/', (_req, res) => {

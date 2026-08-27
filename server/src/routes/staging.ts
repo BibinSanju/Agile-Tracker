@@ -7,12 +7,18 @@ export const stagingRouter = Router();
 stagingRouter.get('/questions', async (req: Request, res: Response) => {
   try {
     const { status } = req.query;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+
     const where: any = {};
     if (status && typeof status === 'string') where.status = status;
 
     const questions = await prisma.stagedQuestion.findMany({
       where,
-      orderBy: { submittedAt: 'desc' }
+      orderBy: { submittedAt: 'desc' },
+      take: limit,
+      skip
     });
 
     const parsed = questions.map(q => ({
@@ -105,22 +111,40 @@ stagingRouter.get('/export-moodle-xml', async (_req: Request, res: Response) => 
 
       const catQuestions = approved.filter(q => (q.confirmedCategory || q.suggestedCategory) === cat);
       catQuestions.forEach(q => {
-        const cleanTitle = q.title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Escape special characters for XML properly
+        const escapeXml = (unsafe: string) => {
+            return unsafe.replace(/[<>&'"]/g, (c) => {
+                switch (c) {
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case '\'': return '&apos;';
+                    case '"': return '&quot;';
+                    default: return c;
+                }
+            });
+        };
+
+        const cleanTitle = escapeXml(q.title);
         const refCode = JSON.parse(q.referenceSolution || '{}');
         const tc = JSON.parse(q.testCases || '[]');
+        const cleanDesc = escapeXml(q.description || '');
+        const cleanInput = tc[0]?.input ? escapeXml(tc[0].input) : '';
+        const cleanOutput = tc[0]?.expectedOutput ? escapeXml(tc[0].expectedOutput) : '';
+        const cleanRefCode = refCode.code ? escapeXml(refCode.code) : '';
 
         xml += `  <question type="essay">\n`;
         xml += `    <name><text>${cleanTitle}</text></name>\n`;
         xml += `    <questiontext format="html">\n`;
         xml += `      <text><![CDATA[\n`;
-        xml += `        <h3>${q.title}</h3>\n`;
-        xml += `        <p>${q.description}</p>\n`;
+        xml += `        <h3>${cleanTitle}</h3>\n`;
+        xml += `        <p>${cleanDesc}</p>\n`;
         xml += `        <h4>Sample Standard I/O Test Case</h4>\n`;
-        xml += `        <pre>Input:\n${tc[0]?.input || ''}\n\nExpected Output:\n${tc[0]?.expectedOutput || ''}</pre>\n`;
+        xml += `        <pre>Input:\n${cleanInput}\n\nExpected Output:\n${cleanOutput}</pre>\n`;
         xml += `      ]]></text>\n`;
         xml += `    </questiontext>\n`;
         xml += `    <generalfeedback format="html">\n`;
-        xml += `      <text><![CDATA[<p>Reference Code:</p><pre>${refCode.code || ''}</pre>]]></text>\n`;
+        xml += `      <text><![CDATA[<p>Reference Code:</p><pre>${cleanRefCode}</pre>]]></text>\n`;
         xml += `    </generalfeedback>\n`;
         xml += `    <defaultgrade>10.0000000</defaultgrade>\n`;
         xml += `  </question>\n\n`;

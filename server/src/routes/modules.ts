@@ -4,10 +4,16 @@ import { prisma } from '../db.js';
 export const modulesRouter = Router();
 
 // GET all modules
-modulesRouter.get('/', async (_req: Request, res: Response) => {
+modulesRouter.get('/', async (req: Request, res: Response) => {
   try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+
     const modules = await prisma.module.findMany({
       orderBy: { createdAt: 'asc' },
+      take: limit,
+      skip,
       include: {
         issues: {
           select: { id: true, state: true, storyPoints: true }

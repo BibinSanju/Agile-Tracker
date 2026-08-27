@@ -4,10 +4,16 @@ import { prisma } from '../db.js';
 export const membersRouter = Router();
 
 // GET all members
-membersRouter.get('/', async (_req: Request, res: Response) => {
+membersRouter.get('/', async (req: Request, res: Response) => {
   try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+
     const members = await prisma.member.findMany({
       orderBy: { createdAt: 'asc' },
+      take: limit,
+      skip,
       include: {
         issues: {
           select: { id: true, state: true, storyPoints: true }
@@ -29,7 +35,20 @@ membersRouter.post('/', async (req: Request, res: Response) => {
     }
 
     const cleanName = name.trim();
-    const cleanEmail = email?.trim() || `${cleanName.toLowerCase().replace(/\s+/g, '')}@college.edu`;
+    let cleanEmail = email?.trim() || `${cleanName.toLowerCase().replace(/\s+/g, '')}@college.edu`;
+
+    // Ensure email is unique
+    let emailExists = await prisma.member.findUnique({ where: { email: cleanEmail } });
+    let counter = 1;
+    while (emailExists && !email?.trim()) {
+      cleanEmail = `${cleanName.toLowerCase().replace(/\s+/g, '')}${counter}@college.edu`;
+      emailExists = await prisma.member.findUnique({ where: { email: cleanEmail } });
+      counter++;
+    }
+    
+    if (emailExists) {
+        return res.status(400).json({ success: false, error: 'Email already exists.' });
+    }
     const avatarText = cleanName.charAt(0).toUpperCase();
 
     const member = await prisma.member.create({
