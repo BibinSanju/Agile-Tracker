@@ -7,7 +7,7 @@ const groqApiKey = process.env.GROQ_API_KEY || '';
 const groq = new Groq({ apiKey: groqApiKey });
 
 // Dedicated client for Agile features to prevent quota exhaustion
-const groqAgileApiKey = process.env.AGILE_GROQ_API_KEY || groqApiKey;
+const groqAgileApiKey = process.env.AUTO_GEN_API || groqApiKey;
 const groqAgile = new Groq({ apiKey: groqAgileApiKey });
 
 // POST formalize raw prompt
