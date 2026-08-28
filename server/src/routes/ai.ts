@@ -76,3 +76,35 @@ Return strictly valid JSON only.`
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// POST generate issue acceptance criteria
+aiRouter.post('/generate-criteria', async (req: Request, res: Response) => {
+  try {
+    const { title, description } = req.body;
+    if (!title) return res.status(400).json({ success: false, error: 'Title is required.' });
+
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert Agile Product Manager and Senior Software Engineer.
+Given a task title and description, generate exactly 3-5 high-quality, actionable Acceptance Criteria.
+Return valid JSON exactly in this format:
+{ "criteria": ["criterion 1", "criterion 2", "criterion 3"] }
+Do not return any other text.`
+        },
+        {
+          role: 'user',
+          content: `Issue Title: ${title}\nDescription: ${description || 'No description'}`
+        }
+      ],
+      response_format: { type: 'json_object' }
+    });
+
+    const result = JSON.parse(completion.choices[0]?.message?.content || '{"criteria":[]}');
+    res.json({ success: true, data: result.criteria });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});

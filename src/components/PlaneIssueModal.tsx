@@ -159,6 +159,30 @@ export default function PlaneIssueModal({
               <label style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--plane-text-muted)', textTransform: 'uppercase' }}>
                 Acceptance Criteria / Definition of Done ({issue.acceptanceCriteria?.filter(c => c.completed).length || 0}/{issue.acceptanceCriteria?.length || 0})
               </label>
+              {onAddCriteria && (
+                <button 
+                  type="button" 
+                  className="plane-btn plane-btn-secondary" 
+                  style={{ padding: '4px 8px', fontSize: '10px', color: 'var(--plane-accent-blue)', borderColor: 'var(--plane-accent-blue)' }}
+                  onClick={async () => {
+                    const btn = document.getElementById('ai-btn-text');
+                    if (btn) btn.innerText = 'Generating...';
+                    try {
+                      const { api } = await import('../services/api');
+                      const criteria = await api.generateIssueCriteria(issue.title, issue.description);
+                      if (criteria && criteria.length > 0) {
+                        criteria.forEach(c => onAddCriteria(issue.id, c));
+                      }
+                    } catch (e) {
+                      console.error('Failed to generate criteria', e);
+                      alert('Failed to generate criteria. Make sure GROQ_API_KEY is set on the backend.');
+                    }
+                    if (btn) btn.innerText = '✨ AI Auto-Generate';
+                  }}
+                >
+                  <span id="ai-btn-text">✨ AI Auto-Generate</span>
+                </button>
+              )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px' }}>

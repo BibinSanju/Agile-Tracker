@@ -107,5 +107,13 @@ export const api = {
     return fetchJson<{ success: boolean }>(`${API_BASE_URL}/cycles/${id}`, {
       method: 'DELETE'
     });
+  },
+
+  // AI
+  async generateIssueCriteria(title: string, description: string) {
+    return fetchJson<string[]>(`${API_BASE_URL}/ai/generate-criteria`, {
+      method: 'POST',
+      body: JSON.stringify({ title, description })
+    });
   }
 };
