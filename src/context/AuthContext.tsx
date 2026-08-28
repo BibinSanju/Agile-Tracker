@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchMemberProfile = async (token: string) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/me`, {
+      const res = await fetch(`${(import.meta as any).env?.VITE_API_URL || 'http://localhost:3001'}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const json = await res.json();
