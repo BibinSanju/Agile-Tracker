@@ -30,7 +30,7 @@ issuesRouter.get('/', async (req: Request, res: Response) => {
       }
     });
 
-    const formatted = issues.map(i => ({
+    const formatted = issues.map((i: any) => ({
       ...i,
       acceptanceCriteria: JSON.parse(i.acceptanceCriteria || '[]')
     }));
