@@ -7,6 +7,7 @@ import { modulesRouter } from './routes/modules.js';
 import { cyclesRouter } from './routes/cycles.js';
 import { stagingRouter } from './routes/staging.js';
 import { aiRouter } from './routes/ai.js';
+import { authRouter } from './routes/auth.js';
 import { prisma } from './db.js';
 
 dotenv.config();
@@ -98,6 +99,7 @@ app.use('/api/modules', modulesRouter);
 app.use('/api/cycles', cyclesRouter);
 app.use('/api/staging', stagingRouter);
 app.use('/api/ai', aiRouter);
+app.use('/api/auth', authRouter);
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

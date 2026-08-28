@@ -11,16 +11,23 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum AccessLevel {
+  ADMIN
+  WORKER
+}
+
 model Member {
-  id            String   @id @default(uuid())
+  id            String      @id @default(uuid())
+  authId        String?     @unique // Maps to Supabase Auth User ID
   name          String
-  email         String   @unique
-  role          String   @default("Junior Developer")
+  email         String      @unique
+  role          String      @default("Junior Developer")
+  accessLevel   AccessLevel @default(WORKER)
   avatarText    String
-  avatarColor   String   @default("#3f7bf6")
-  assignedTrack String   @default("General Development")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  avatarColor   String      @default("#3f7bf6")
+  assignedTrack String      @default("General Development")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   issues        Issue[]
 }
 
