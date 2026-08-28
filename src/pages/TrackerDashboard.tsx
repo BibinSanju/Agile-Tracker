@@ -285,6 +285,11 @@ export default function TrackerDashboard() {
     });
   };
 
+  const handleDeleteCycle = (cycleId: string) => {
+    setCycles(prev => prev.filter(c => c.id !== cycleId));
+    api.deleteCycle(cycleId);
+  };
+
   // 1-Click Load Blueprint
   const handleSeedBlueprint = () => {
     setIssues(SEED_ARCHITECTURE_ISSUES);
@@ -403,6 +408,7 @@ export default function TrackerDashboard() {
             issues={issues}
             members={members}
             onOpenAddCycle={() => setIsAddCycleOpen(true)}
+            onDeleteCycle={handleDeleteCycle}
           />
         )}
 

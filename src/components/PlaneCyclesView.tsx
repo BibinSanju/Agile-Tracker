@@ -72,6 +72,19 @@ export default function PlaneCyclesView({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span className="module-badge" style={{ textTransform: 'capitalize' }}>{activeCycle.status}</span>
               <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--plane-text-primary)' }}>{activeCycle.name}</h2>
+              {onDeleteCycle && (
+                <button 
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete ${activeCycle.name}? This will delete all associated issues.`)) {
+                      onDeleteCycle(activeCycle.id);
+                    }
+                  }}
+                  style={{ background: 'none', border: 'none', color: 'var(--plane-accent-red)', cursor: 'pointer', opacity: 0.7, padding: '4px' }}
+                  title="Delete Cycle"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </div>
             <p style={{ fontSize: '12.5px', color: 'var(--plane-text-secondary)', marginTop: '4px', maxWidth: '720px' }}>
               {activeCycle.description}

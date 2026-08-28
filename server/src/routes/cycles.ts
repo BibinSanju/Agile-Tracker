@@ -46,3 +46,14 @@ cyclesRouter.post('/', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// DELETE cycle
+cyclesRouter.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    await prisma.cycle.delete({ where: { id } });
+    res.json({ success: true, message: `Cycle ${id} deleted.` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});

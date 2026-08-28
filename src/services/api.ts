@@ -85,6 +85,12 @@ export const api = {
     });
   },
 
+  async deleteModule(id: string) {
+    return fetchJson<{ success: boolean }>(`${API_BASE_URL}/modules/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
   // Cycles
   async getCycles() {
     return fetchJson<PlaneCycle[]>(`${API_BASE_URL}/cycles`);
@@ -94,6 +100,12 @@ export const api = {
     return fetchJson<PlaneCycle>(`${API_BASE_URL}/cycles`, {
       method: 'POST',
       body: JSON.stringify(cycle)
+    });
+  },
+
+  async deleteCycle(id: string) {
+    return fetchJson<{ success: boolean }>(`${API_BASE_URL}/cycles/${id}`, {
+      method: 'DELETE'
     });
   }
 };
