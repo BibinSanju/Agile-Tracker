@@ -189,16 +189,16 @@ export default function PlaneIssueModal({
               {issue.acceptanceCriteria && issue.acceptanceCriteria.map((item) => (
                 <div 
                   key={item.id} 
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: item.completed ? 'var(--plane-text-muted)' : 'var(--plane-text-secondary)', background: 'var(--plane-bg-base)', padding: '6px 10px', borderRadius: 'var(--plane-radius-sm)', border: '1px solid var(--plane-border-subtle)', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12.5px', color: item.completed ? 'var(--plane-text-muted)' : 'var(--plane-text-secondary)', background: 'var(--plane-bg-base)', padding: '8px 10px', borderRadius: 'var(--plane-radius-sm)', border: '1px solid var(--plane-border-subtle)', cursor: 'pointer' }}
                   onClick={() => onToggleCriteria && onToggleCriteria(issue.id, item.id)}
                 >
                   <input 
                     type="checkbox" 
                     checked={item.completed} 
                     onChange={() => onToggleCriteria && onToggleCriteria(issue.id, item.id)}
-                    style={{ cursor: 'pointer', accentColor: 'var(--plane-accent-emerald)' }} 
+                    style={{ cursor: 'pointer', accentColor: 'var(--plane-accent-emerald)', marginTop: '2px', flexShrink: 0 }} 
                   />
-                  <span style={{ textDecoration: item.completed ? 'line-through' : 'none' }}>{item.text}</span>
+                  <span style={{ textDecoration: item.completed ? 'line-through' : 'none', lineHeight: 1.4, wordBreak: 'break-word' }}>{item.text}</span>
                 </div>
               ))}
 

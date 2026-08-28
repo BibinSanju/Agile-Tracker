@@ -209,7 +209,7 @@ export default function PlaneNewIssueModal({ modules, members, cycles, onClose, 
                 </button>
               </div>
               <textarea 
-                rows={2}
+                rows={6}
                 style={{ background: 'var(--plane-bg-base)', border: '1px solid var(--plane-border-medium)', borderRadius: 'var(--plane-radius-sm)', padding: '6px 10px', width: '100%', marginTop: '3px', color: 'var(--plane-text-primary)', fontFamily: 'inherit', fontSize: '12px', outline: 'none' }}
                 placeholder="e.g.&#10;Tested with sample payload&#10;Passes TypeScript build"
                 value={criteriaText}
