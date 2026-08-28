@@ -215,7 +215,11 @@ export default function TrackerDashboard() {
       updatedAt: new Date().toISOString().split('T')[0]
     };
     setIssues(prev => [newIssue, ...prev]);
-    api.createIssue(newIssue);
+    api.createIssue(newIssue).then(realIssue => {
+      if (realIssue) {
+        setIssues(prev => prev.map(i => i.id === newIssue.id ? realIssue : i));
+      }
+    });
   };
 
   const handleDeleteIssue = (issueId: string) => {
@@ -233,7 +237,11 @@ export default function TrackerDashboard() {
       createdAt: new Date().toISOString().split('T')[0]
     };
     setMembers(prev => [...prev, newMember]);
-    api.createMember(newMember);
+    api.createMember(newMember).then(realMember => {
+      if (realMember) {
+        setMembers(prev => prev.map(m => m.id === newMember.id ? realMember : m));
+      }
+    });
   };
 
   const handleDeleteMember = (memberId: string) => {
@@ -251,7 +259,11 @@ export default function TrackerDashboard() {
       createdAt: new Date().toISOString().split('T')[0]
     };
     setModules(prev => [...prev, newModule]);
-    api.createModule(newModule);
+    api.createModule(newModule).then(realModule => {
+      if (realModule) {
+        setModules(prev => prev.map(m => m.id === newModule.id ? realModule : m));
+      }
+    });
   };
 
   const handleDeleteModule = (moduleId: string) => {
@@ -266,7 +278,11 @@ export default function TrackerDashboard() {
       createdAt: new Date().toISOString().split('T')[0]
     };
     setCycles(prev => [...prev, newCycle]);
-    api.createCycle(newCycle);
+    api.createCycle(newCycle).then(realCycle => {
+      if (realCycle) {
+        setCycles(prev => prev.map(c => c.id === newCycle.id ? realCycle : c));
+      }
+    });
   };
 
   // 1-Click Load Blueprint
