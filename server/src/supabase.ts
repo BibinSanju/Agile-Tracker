@@ -3,6 +3,9 @@ import WebSocket from 'ws';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from './db.js';
 
+// Polyfill WebSocket globally for Node 20 so Supabase Realtime works perfectly
+(globalThis as any).WebSocket = WebSocket;
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -12,9 +15,6 @@ if (!supabaseUrl || !supabaseKey) {
 
 // Use Service Role key for admin privileges in the backend
 export const supabase = createClient(supabaseUrl, supabaseKey, {
-  global: {
-    WebSocket,
-  } as any,
   auth: {
     autoRefreshToken: false,
     persistSession: false
