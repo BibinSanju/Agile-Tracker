@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from './db.js';
 
@@ -11,6 +12,9 @@ if (!supabaseUrl || !supabaseKey) {
 
 // Use Service Role key for admin privileges in the backend
 export const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    WebSocket,
+  },
   auth: {
     autoRefreshToken: false,
     persistSession: false
