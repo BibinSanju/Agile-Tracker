@@ -13,7 +13,7 @@ aiRouter.post('/formalize', async (req: Request, res: Response) => {
     if (!rawText) return res.status(400).json({ success: false, error: 'rawText is required.' });
 
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-70b-versatile',
       messages: [
         {
           role: 'system',
@@ -50,7 +50,7 @@ aiRouter.post('/synthesize-testcases', async (req: Request, res: Response) => {
     if (!title || !description) return res.status(400).json({ success: false, error: 'Title and description are required.' });
 
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-70b-versatile',
       messages: [
         {
           role: 'system',
@@ -84,7 +84,7 @@ aiRouter.post('/generate-criteria', async (req: Request, res: Response) => {
     if (!title) return res.status(400).json({ success: false, error: 'Title is required.' });
 
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-70b-versatile',
       messages: [
         {
           role: 'system',
