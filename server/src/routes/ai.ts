@@ -6,6 +6,10 @@ export const aiRouter = Router();
 const groqApiKey = process.env.GROQ_API_KEY || '';
 const groq = new Groq({ apiKey: groqApiKey });
 
+// Dedicated client for Agile features to prevent quota exhaustion
+const groqAgileApiKey = process.env.AGILE_GROQ_API_KEY || groqApiKey;
+const groqAgile = new Groq({ apiKey: groqAgileApiKey });
+
 // POST formalize raw prompt
 aiRouter.post('/formalize', async (req: Request, res: Response) => {
   try {
@@ -83,7 +87,7 @@ aiRouter.post('/generate-criteria', async (req: Request, res: Response) => {
     const { title, description } = req.body;
     if (!title) return res.status(400).json({ success: false, error: 'Title is required.' });
 
-    const completion = await groq.chat.completions.create({
+    const completion = await groqAgile.chat.completions.create({
       model: 'llama-3.1-70b-versatile',
       messages: [
         {
