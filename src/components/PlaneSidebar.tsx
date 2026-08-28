@@ -7,12 +7,14 @@ import {
   BarChart2, 
   GitBranch, 
   Inbox, 
-  Users, 
-  Plus, 
+  Users,
+  Plus,
   PanelLeftClose,
   PanelLeftOpen,
-  CheckCircle2
+  CheckCircle2,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { PlaneIssue } from '../data/planeData';
 
 interface PlaneSidebarProps {
@@ -23,6 +25,7 @@ interface PlaneSidebarProps {
 }
 
 export default function PlaneSidebar({ issues, activeView, setActiveView, onOpenNewIssue }: PlaneSidebarProps) {
+  const { member, user, signOut } = useAuth();
   const location = useLocation();
   const isStaging = location.pathname === '/staging';
 
@@ -203,19 +206,35 @@ export default function PlaneSidebar({ issues, activeView, setActiveView, onOpen
       </nav>
 
       {/* Footer User Profile */}
-      <div className="sidebar-footer">
+      <div className="sidebar-footer" style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--plane-border-medium)' }}>
         <div 
           className="user-profile-summary"
-          onClick={toggleCollapse}
-          title={isCollapsed ? 'Click to expand sidebar' : 'Bibin (Lead Architect)'}
-          style={{ cursor: 'pointer' }}
+          onClick={isCollapsed ? toggleCollapse : undefined}
+          title={isCollapsed ? 'Click to expand sidebar' : member?.name || user?.email}
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: isCollapsed ? 'pointer' : 'default', overflow: 'hidden' }}
         >
-          <div className="user-avatar" style={{ background: '#3f7bf6' }}>B</div>
-          <div className="user-details">
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--plane-text-primary)' }}>Bibin (Lead)</div>
-            <div style={{ fontSize: '10.5px', color: 'var(--plane-text-muted)' }}>Lead Architect</div>
+          <div className="user-avatar" style={{ background: member?.avatarColor || '#3f7bf6', width: '28px', height: '28px', borderRadius: 'var(--plane-radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, flexShrink: 0 }}>
+            {member?.avatarText || (user?.email ? user.email[0].toUpperCase() : 'U')}
           </div>
+          {!isCollapsed && (
+            <div className="user-details" style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--plane-text-primary)' }}>{member?.name || user?.email?.split('@')[0]}</div>
+              <div style={{ fontSize: '11px', color: 'var(--plane-text-muted)' }}>{member?.accessLevel || 'GUEST'}</div>
+            </div>
+          )}
         </div>
+        
+        {!isCollapsed && (
+          <button 
+            onClick={() => signOut()}
+            style={{ background: 'transparent', border: 'none', color: 'var(--plane-text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+            title="Log out"
+            onMouseOver={(e) => e.currentTarget.style.color = 'var(--plane-accent-rose)'}
+            onMouseOut={(e) => e.currentTarget.style.color = 'var(--plane-text-muted)'}
+          >
+            <LogOut size={14} />
+          </button>
+        )}
       </div>
     </aside>
   );

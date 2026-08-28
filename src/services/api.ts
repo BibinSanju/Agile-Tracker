@@ -2,18 +2,27 @@ import { PlaneIssue, PlaneMember, PlaneModule, PlaneCycle } from '../data/planeD
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api';
 
-const API_KEY = (import.meta as any).env?.VITE_API_KEY || '';
+let authToken: string | null = null;
 
 // Generic fetcher with graceful offline fallback
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T | null> {
   try {
+    const headers = new Headers(options?.headers || {});
+    headers.set('Content-Type', 'application/json');
+    
+    // Use VITE_API_KEY for legacy routes if present
+    if ((import.meta as any).env?.VITE_API_KEY) {
+      headers.set('x-api-key', (import.meta as any).env.VITE_API_KEY);
+    }
+    
+    // Attach Supabase JWT for protected routes
+    if (authToken) {
+      headers.set('Authorization', `Bearer ${authToken}`);
+    }
+
     const res = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        ...options?.headers
-      }
+      headers
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     const data = await res.json();
@@ -25,6 +34,10 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T | nul
 }
 
 export const api = {
+  setAuthToken(token: string | null) {
+    authToken = token;
+  },
+
   // Healthcheck
   async checkHealth() {
     return fetchJson<{ status: string; stats: any }>(`${API_BASE_URL}/health`);

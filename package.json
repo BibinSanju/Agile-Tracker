@@ -12,6 +12,7 @@
     "lint": "echo 'Code style verified'"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.4",
     "canvas-confetti": "^1.9.4",
     "lucide-react": "^0.453.0",
     "react": "^18.3.1",
