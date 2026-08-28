@@ -2,10 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from './db.js';
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseUrl = process.env.SUPABASE_URL || 'https://dummy-url.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'dummy-key';
 
-if (!supabaseUrl || !supabaseKey) {
+if (supabaseUrl === 'https://dummy-url.supabase.co' || supabaseKey === 'dummy-key') {
   console.warn('⚠️ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing. Auth will fail.');
 }
 
