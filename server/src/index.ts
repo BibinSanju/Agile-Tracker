@@ -17,7 +17,7 @@ const API_KEY = process.env.API_KEY;
 
 // CORS setup (Allows Vercel frontend and local development)
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: '*',
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
 }));
