@@ -14,7 +14,7 @@ if (!supabaseUrl || !supabaseKey) {
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   global: {
     WebSocket,
-  },
+  } as any,
   auth: {
     autoRefreshToken: false,
     persistSession: false
