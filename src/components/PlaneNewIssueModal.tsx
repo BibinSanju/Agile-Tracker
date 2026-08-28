@@ -176,7 +176,38 @@ export default function PlaneNewIssueModal({ modules, members, cycles, onClose, 
             </div>
 
             <div>
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>ACCEPTANCE CRITERIA (1 PER LINE)</label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>ACCEPTANCE CRITERIA (1 PER LINE)</label>
+                <button 
+                  type="button" 
+                  className="plane-btn plane-btn-secondary" 
+                  style={{ padding: '2px 6px', fontSize: '10px', color: 'var(--plane-accent-blue)', borderColor: 'var(--plane-accent-blue)' }}
+                  onClick={async () => {
+                    if (!title) {
+                      alert('Please enter a title first so the AI knows what to generate!');
+                      return;
+                    }
+                    const btn = document.getElementById('ai-btn-text-new');
+                    if (btn) btn.innerText = 'Generating...';
+                    try {
+                      const { api } = await import('../services/api');
+                      const criteria = await api.generateIssueCriteria(title, description);
+                      if (criteria && criteria.length > 0) {
+                        setCriteriaText(prev => {
+                          const existing = prev.trim() ? prev + '\n' : '';
+                          return existing + criteria.join('\n');
+                        });
+                      }
+                    } catch (e) {
+                      console.error('Failed to generate criteria', e);
+                      alert('Failed to generate criteria. Make sure the API key is set.');
+                    }
+                    if (btn) btn.innerText = '✨ AI Auto-Generate';
+                  }}
+                >
+                  <span id="ai-btn-text-new">✨ AI Auto-Generate</span>
+                </button>
+              </div>
               <textarea 
                 rows={2}
                 style={{ background: 'var(--plane-bg-base)', border: '1px solid var(--plane-border-medium)', borderRadius: 'var(--plane-radius-sm)', padding: '6px 10px', width: '100%', marginTop: '3px', color: 'var(--plane-text-primary)', fontFamily: 'inherit', fontSize: '12px', outline: 'none' }}
