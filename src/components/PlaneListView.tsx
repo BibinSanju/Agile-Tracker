@@ -89,12 +89,6 @@ export default function PlaneListView({
               <Plus size={14} />
               <span>Create First Issue (C)</span>
             </button>
-            {onSeedBlueprint && (
-              <button className="plane-btn plane-btn-secondary" onClick={onSeedBlueprint}>
-                <Sparkles size={14} color="var(--plane-accent-cyan)" />
-                <span>Load Architecture Map (20 Tasks)</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
