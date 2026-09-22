@@ -179,7 +179,8 @@ Stage 6 (Staging & Review) ──▶ Stage 7 (CI/CD & Agile Tracker) ──▶ S
 ---
 
 ### Stage 7: CI/CD Quality Gates & Agile Project Progress Tracker
-* **1. GitHub Actions CI:** Runs ESLint, TypeScript compilation (`tsc`), and XML validation unit tests on every git push.
+* **1. GitHub Actions CI (`.github/workflows/ci.yml`):** Runs on **every push to every branch** and on PRs to `main`/`staging`. Two parallel jobs: `frontend` (TypeScript + Vite production build, Playwright E2E in Chromium) and `server` (`prisma validate`, `prisma generate`, `tsc --noEmit`).
+* **1b. Nothing-untested promotion:** Commits are pushed to `staging`, never directly to `main`. The `promote-to-main` job runs only after both gate jobs succeed for that exact commit and fast-forwards `main` to it (falls back to a merge commit if `main` diverged). A red build leaves `main` untouched. The tracker's sidebar badge and CI/CD panel read live run status from the GitHub Actions API.
 * **2. Microsoft Playwright E2E Tests:** Headless browser robot automatically tests:
   * Faculty login & session persistence.
   * Checkbox bulk selection and category re-assignment.

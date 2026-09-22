@@ -8,6 +8,7 @@ import { cyclesRouter } from './routes/cycles.js';
 import { stagingRouter } from './routes/staging.js';
 import { aiRouter } from './routes/ai.js';
 import { authRouter } from './routes/auth.js';
+import { ciRouter } from './routes/ci.js';
 import { prisma } from './db.js';
 
 dotenv.config();
@@ -27,7 +28,7 @@ app.use(express.json());
 
 // Basic API Key Authentication Middleware
 app.use((req, res, next) => {
-  if (req.path === '/' || req.path === '/api/health') {
+  if (req.path === '/' || req.path === '/api/health' || req.path === '/api/ci/status') {
     next();
     return;
   }
@@ -100,6 +101,7 @@ app.use('/api/cycles', cyclesRouter);
 app.use('/api/staging', stagingRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/ci', ciRouter);
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

@@ -842,3 +842,7 @@ body {
   background: var(--plane-bg-surface-hover);
   border-color: var(--plane-border-strong);
 }
+
+/* Live CI status spinner (sidebar badge & CI/CD panel) */
+@keyframes ci-spin { to { transform: rotate(360deg); } }
+.ci-spin { animation: ci-spin 1s linear infinite; }

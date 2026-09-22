@@ -15,6 +15,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useGitHubCI, CI_STATE_LABEL, CI_STATE_COLOR } from '../hooks/useGitHubCI';
 import { PlaneIssue } from '../data/planeData';
 
 interface PlaneSidebarProps {
@@ -26,6 +27,7 @@ interface PlaneSidebarProps {
 
 export default function PlaneSidebar({ issues, activeView, setActiveView, onOpenNewIssue }: PlaneSidebarProps) {
   const { member, user, signOut } = useAuth();
+  const ci = useGitHubCI();
   const location = useLocation();
   const isStaging = location.pathname === '/staging';
 
@@ -172,7 +174,14 @@ export default function PlaneSidebar({ issues, activeView, setActiveView, onOpen
             <GitBranch size={16} />
             <span className="sidebar-link-text">CI/CD Workflows</span>
           </div>
-          <span className="sidebar-count-badge" style={{ color: 'var(--plane-accent-emerald)', background: 'rgba(16, 185, 129, 0.15)' }}>Passing</span>
+          <span
+            className="sidebar-count-badge"
+            data-ci-state={ci.state}
+            title={ci.gateRun ? `Latest quality gate: ${ci.gateRun.headBranch} @ ${ci.gateRun.headSha.slice(0, 7)}` : 'GitHub Actions status unavailable'}
+            style={{ color: CI_STATE_COLOR[ci.state].fg, background: CI_STATE_COLOR[ci.state].bg }}
+          >
+            {CI_STATE_LABEL[ci.state]}
+          </span>
         </button>
 
         <Link 

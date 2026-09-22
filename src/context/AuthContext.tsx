@@ -3,6 +3,28 @@ import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { api } from '../services/api';
 
+// E2E/dev-only auth bypass. Guarded by import.meta.env.DEV so Vite strips this
+// branch from production bundles; it can only ever activate under `vite` dev.
+const E2E_AUTH_BYPASS = import.meta.env.DEV && import.meta.env.VITE_E2E_AUTH_BYPASS === 'true';
+
+const E2E_STUB_USER = {
+  id: 'e2e-user',
+  email: 'e2e@intelx.local',
+  app_metadata: {},
+  user_metadata: {},
+  aud: 'authenticated',
+  created_at: new Date(0).toISOString(),
+} as unknown as User;
+
+const E2E_STUB_MEMBER = {
+  id: 'e2e-member',
+  name: 'E2E Tester',
+  email: 'e2e@intelx.local',
+  avatarText: 'E2',
+  avatarColor: '#3f7bf6',
+  accessLevel: 'ADMIN',
+};
+
 interface AuthContextType {
   user: User | null;
   member: any | null; // Database member profile
@@ -18,6 +40,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (E2E_AUTH_BYPASS) {
+      console.warn('⚠️ VITE_E2E_AUTH_BYPASS is active: using a stub session (dev only).');
+      setUser(E2E_STUB_USER);
+      setMember(E2E_STUB_MEMBER);
+      setLoading(false);
+      return;
+    }
+
     // Check active session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -62,6 +92,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    if (E2E_AUTH_BYPASS) {
+      setUser(null);
+      setMember(null);
+      return;
+    }
     await supabase.auth.signOut();
   };
 

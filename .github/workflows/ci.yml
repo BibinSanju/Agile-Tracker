@@ -2,14 +2,22 @@ name: 🚀 Portal CI & Quality Gate
 
 on:
   push:
-    branches: [ main, staging, "feature/**" ]
+    # Every branch: nothing that is pushed goes untested. Only `staging` is
+    # auto-promoted to `main` (see the promote-to-main job below).
+    branches: [ "**" ]
   pull_request:
     branches: [ main, staging ]
+  workflow_call: # Reused by daily-build.yml so the two never drift apart
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  code-quality-and-test:
-    name: 🔍 Lint, Typecheck & Playwright E2E
+  frontend:
+    name: 🔍 Frontend · Typecheck, Build & Playwright E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: 📥 Check out repository
         uses: actions/checkout@v4
@@ -23,15 +31,16 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm ci
 
-      - name: 🔍 TypeScript Strict Typecheck
-        run: npx tsc --noEmit
-
-      - name: 🏗️ Test Production Build
+      # `npm run build` already runs `tsc` first, so a separate typecheck step
+      # is redundant and only adds ~10s.
+      - name: 🏗️ Typecheck & Production Build
         run: npm run build
 
       - name: 🎭 Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
+      # playwright.config.ts starts the Vite dev server with the dev-only
+      # VITE_E2E_AUTH_BYPASS stub session, so no Supabase/backend is needed.
       - name: 🧪 Run Automated Playwright E2E Tests
         run: npx playwright test
 
@@ -40,5 +49,103 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7
+          if-no-files-found: ignore
+
+  server:
+    name: 🛠️ Server · Prisma Generate & Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: server
+    env:
+      # Dummy values: `prisma validate/generate` only parse the schema and
+      # never connect, but the schema declares both variables so they must
+      # be present.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - name: 📥 Check out repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🗄️ Validate Prisma Schema
+        run: npx prisma validate
+
+      - name: ⚙️ Generate Prisma Client
+        run: npx prisma generate
+
+      - name: 🔍 TypeScript Build Check
+        run: npx tsc --noEmit
+
+  # ---------------------------------------------------------------------------
+  # Auto-promotion: commits pushed to `staging` are merged into `main` only
+  # after BOTH jobs above succeed for that exact commit. `main` therefore never
+  # receives code that hasn't passed the full quality gate.
+  # ---------------------------------------------------------------------------
+  promote-to-main:
+    name: 🚢 Promote staging → main
+    needs: [frontend, server]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    # Serialize promotions so two green runs can't race each other on main.
+    concurrency:
+      group: promote-to-main
+      cancel-in-progress: false
+    steps:
+      - name: 📥 Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: 🔀 Merge verified commit into main
+        env:
+          VERIFIED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          echo "main is at  $(git rev-parse --short HEAD)"
+          echo "promoting   ${VERIFIED_SHA:0:7} (tested by jobs above)"
+
+          # Prefer a fast-forward so main stays a linear history of staging.
+          # Fall back to a merge commit if someone pushed directly to main.
+          if git merge --ff-only "$VERIFIED_SHA"; then
+            echo "✅ fast-forwarded main"
+          else
+            git merge --no-ff "$VERIFIED_SHA" \
+              -m "ci: promote staging ${VERIFIED_SHA:0:7} to main (all checks passed)"
+            echo "✅ merged with a merge commit (main had diverged)"
+          fi
+
+          git push origin HEAD:main
+
+      - name: 🔁 Keep staging in sync with main
+        # Only needed when a merge commit was created above; a no-op after a
+        # fast-forward. Pushes made with GITHUB_TOKEN don't re-trigger CI.
+        run: git push origin HEAD:staging || echo "staging already up to date"
+
+      - name: 📝 Summary
+        run: |
+          echo "### 🚢 Promoted to main" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${GITHUB_SHA:0:7}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Gate: frontend build + Playwright E2E ✅, server Prisma + typecheck ✅" >> "$GITHUB_STEP_SUMMARY"

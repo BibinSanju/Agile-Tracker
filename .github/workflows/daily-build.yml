@@ -7,33 +7,23 @@ on:
   workflow_dispatch: # Allows manual trigger anytime from GitHub Actions UI
 
 jobs:
-  daily-health-check:
+  # Reuse the exact same quality gate as ci.yml instead of a hand-maintained
+  # copy that can silently drift out of sync.
+  quality-gate:
     name: 🩺 Daily Regression & System Health
+    uses: ./.github/workflows/ci.yml
+
+  report:
+    name: 🔔 Log Daily Build Result
+    needs: quality-gate
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Check out repository
-        uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js (v20)
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: 📦 Install Dependencies
-        run: npm ci
-
-      - name: 🔍 TypeScript Compile Check
-        run: npx tsc --noEmit
-
-      - name: 🏗️ Production Bundle Build Check
-        run: npm run build
-
-      - name: 🎭 Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: 🧪 Run Automated Regression Tests
-        run: npx playwright test
-
-      - name: 🔔 Log Daily Build Success
-        run: echo "✅ Daily Build and Regression Check passed on $(date -u)"
+      - name: Report
+        run: |
+          if [ "${{ needs.quality-gate.result }}" = "success" ]; then
+            echo "✅ Daily Build and Regression Check passed on $(date -u)"
+          else
+            echo "❌ Daily Build and Regression Check FAILED (${{ needs.quality-gate.result }}) on $(date -u)"
+            exit 1
+          fi
