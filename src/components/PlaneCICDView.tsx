@@ -140,7 +140,7 @@ export default function PlaneCICDView() {
           iconFg="var(--plane-accent-amber)"
           title="Nothing-Untested Policy: staging → main auto-promotion"
           subtitle={`${ci.repo} · job promote-to-main in ci.yml`}
-          badge={<StatePill state={mainState} label={`main: ${CI_STATE_LABEL[mainState]}`} />}
+          badge={<StatePill state={mainState} label={`main${ci.mainSha ? ' @ ' + ci.mainSha.slice(0, 7) : ''}: ${CI_STATE_LABEL[mainState]}`} />}
         >
           <p style={{ fontSize: '12px', color: 'var(--plane-text-secondary)', marginBottom: '8px' }}>
             Work is committed to <code>staging</code> (or any feature branch), never directly to <code>main</code>. Each push triggers the

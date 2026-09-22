@@ -35,8 +35,10 @@ export interface GitHubCI {
   actionsUrl: string;
   /** Most recent run of the quality gate (ci.yml, or daily-build which calls it) on any branch. */
   gateRun: CIRun | null;
-  /** Most recent gate run that executed against `main` itself. */
+  /** The gate run that tested the commit `main` currently points at. */
   mainRun: CIRun | null;
+  /** Current SHA of `main`, when known. */
+  mainSha: string | null;
   /** Latest run per workflow file path. */
   latestByWorkflow: Record<string, CIRun>;
   runs: CIRun[];
@@ -57,8 +59,10 @@ const POLL_MS = 5 * 60 * 1000;
 const repo: string = import.meta.env.VITE_GITHUB_REPO || DEFAULT_REPO;
 const API_BASE_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-let cache: { at: number; runs: CIRun[] } | null = null;
-let inflight: Promise<CIRun[]> | null = null;
+interface Snapshot { runs: CIRun[]; mainSha: string | null }
+
+let cache: { at: number; snap: Snapshot } | null = null;
+let inflight: Promise<Snapshot> | null = null;
 
 function mapRun(r: any): CIRun {
   return {
@@ -76,8 +80,8 @@ function mapRun(r: any): CIRun {
   };
 }
 
-async function fetchRuns(force = false): Promise<CIRun[]> {
-  if (!force && cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.runs;
+async function fetchSnapshot(force = false): Promise<Snapshot> {
+  if (!force && cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.snap;
   if (inflight) return inflight;
 
   inflight = (async () => {
@@ -90,9 +94,9 @@ async function fetchRuns(force = false): Promise<CIRun[]> {
       window.clearTimeout(t);
       if (res.ok) {
         const json = await res.json();
-        const runs = (json.data?.runs ?? []) as CIRun[];
-        cache = { at: Date.now(), runs };
-        return runs;
+        const snap: Snapshot = { runs: (json.data?.runs ?? []) as CIRun[], mainSha: json.data?.mainSha ?? null };
+        cache = { at: Date.now(), snap };
+        return snap;
       }
     } catch {
       /* backend offline – fall through to GitHub directly */
@@ -117,8 +121,20 @@ async function fetchRuns(force = false): Promise<CIRun[]> {
     const runs = [...gate, ...daily, ...scraper].sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
-    cache = { at: Date.now(), runs };
-    return runs;
+    // main's SHA lets us find the run that tested the promoted commit (it ran
+    // on `staging`; the bot's push to main triggers no new run).
+    let mainSha: string | null = null;
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repo}/branches/main`, {
+        headers: { Accept: 'application/vnd.github+json' },
+      });
+      if (res.ok) mainSha = (await res.json()).commit?.sha ?? null;
+    } catch {
+      /* non-fatal */
+    }
+    const snap: Snapshot = { runs, mainSha };
+    cache = { at: Date.now(), snap };
+    return snap;
   })();
 
   try {
@@ -172,14 +188,16 @@ export function timeAgo(iso: string): string {
 }
 
 export function useGitHubCI(): GitHubCI {
-  const [runs, setRuns] = useState<CIRun[]>(cache?.runs ?? []);
+  const [runs, setRuns] = useState<CIRun[]>(cache?.snap.runs ?? []);
+  const [mainSha, setMainSha] = useState<string | null>(cache?.snap.mainSha ?? null);
   const [loaded, setLoaded] = useState<boolean>(Boolean(cache));
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback((force = false) => {
-    fetchRuns(force)
-      .then((r) => {
-        setRuns(r);
+    fetchSnapshot(force)
+      .then((snap) => {
+        setRuns(snap.runs);
+        setMainSha(snap.mainSha);
         setError(null);
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
@@ -204,8 +222,13 @@ export function useGitHubCI(): GitHubCI {
     [latestByWorkflow[GATE_WORKFLOW_PATH], latestByWorkflow[DAILY_WORKFLOW_PATH]]
       .filter((r): r is CIRun => Boolean(r))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0] ?? null;
+  const isGate = (r: CIRun) => r.path === GATE_WORKFLOW_PATH || r.path === DAILY_WORKFLOW_PATH;
+  // Prefer the run that tested the exact commit main points at (usually a
+  // `staging` run that was then promoted); fall back to any run on main.
   const mainRun =
-    runs.find((r) => (r.path === GATE_WORKFLOW_PATH || r.path === DAILY_WORKFLOW_PATH) && r.headBranch === 'main') ?? null;
+    (mainSha && runs.find((r) => isGate(r) && r.headSha === mainSha)) ||
+    runs.find((r) => isGate(r) && r.headBranch === 'main') ||
+    null;
 
   let state: CIState;
   if (!loaded) state = 'loading';
@@ -219,6 +242,7 @@ export function useGitHubCI(): GitHubCI {
     actionsUrl: `https://github.com/${repo}/actions`,
     gateRun,
     mainRun,
+    mainSha,
     latestByWorkflow,
     runs,
     error,

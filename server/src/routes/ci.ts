@@ -37,8 +37,10 @@ interface RunDTO {
   updatedAt: string;
 }
 
-let cache: { at: number; runs: RunDTO[] } | null = null;
-let inflight: Promise<RunDTO[]> | null = null;
+interface Snapshot { runs: RunDTO[]; mainSha: string | null }
+
+let cache: { at: number; snap: Snapshot } | null = null;
+let inflight: Promise<Snapshot> | null = null;
 
 function mapRun(r: any): RunDTO {
   return {
@@ -56,8 +58,8 @@ function mapRun(r: any): RunDTO {
   };
 }
 
-async function fetchRuns(): Promise<RunDTO[]> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.runs;
+async function fetchSnapshot(): Promise<Snapshot> {
+  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.snap;
   if (inflight) return inflight;
 
   const headers: Record<string, string> = {
@@ -79,8 +81,21 @@ async function fetchRuns(): Promise<RunDTO[]> {
     const runs = lists
       .flat()
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    cache = { at: Date.now(), runs };
-    return runs;
+
+    // Promoted commits are tested on `staging`, and the bot's push to `main`
+    // does not trigger a new run, so "is main green?" must be answered by
+    // matching main's SHA against the run that tested it - not by branch.
+    let mainSha: string | null = null;
+    try {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/branches/main`, { headers });
+      if (res.ok) mainSha = ((await res.json()) as any).commit?.sha ?? null;
+    } catch {
+      /* non-fatal */
+    }
+
+    const snap: Snapshot = { runs, mainSha };
+    cache = { at: Date.now(), snap };
+    return snap;
   })();
 
   try {
@@ -92,13 +107,13 @@ async function fetchRuns(): Promise<RunDTO[]> {
 
 ciRouter.get('/status', async (_req: Request, res: Response) => {
   try {
-    const runs = await fetchRuns();
+    const snap = await fetchSnapshot();
     res.setHeader('Cache-Control', 'public, max-age=60');
-    res.json({ success: true, data: { repo: REPO, fetchedAt: new Date(cache?.at ?? Date.now()).toISOString(), runs } });
+    res.json({ success: true, data: { repo: REPO, fetchedAt: new Date(cache?.at ?? Date.now()).toISOString(), ...snap } });
   } catch (error: any) {
     // Serve stale data rather than nothing if GitHub is briefly unavailable.
     if (cache) {
-      res.json({ success: true, data: { repo: REPO, fetchedAt: new Date(cache.at).toISOString(), runs: cache.runs, stale: true } });
+      res.json({ success: true, data: { repo: REPO, fetchedAt: new Date(cache.at).toISOString(), ...cache.snap, stale: true } });
       return;
     }
     res.status(502).json({ success: false, error: error.message });
