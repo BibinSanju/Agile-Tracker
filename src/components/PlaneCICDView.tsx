@@ -118,7 +118,7 @@ export default function PlaneCICDView() {
         <div>
           <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--plane-text-primary)' }}>CI/CD Quality Gates & Automated Workflows</h2>
           <p style={{ fontSize: '12px', color: 'var(--plane-text-muted)' }}>
-            Every push to every branch is built and tested by GitHub Actions. <code>main</code> only ever receives commits that passed the full gate.
+            Every push to every branch is built and tested by GitHub Actions before anything reaches users. <code>main</code> only ever receives commits that passed the full gate.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
