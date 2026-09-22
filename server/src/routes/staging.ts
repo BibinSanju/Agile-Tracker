@@ -54,8 +54,10 @@ stagingRouter.post('/questions', async (req: Request, res: Response) => {
         similarityScore: similarityScore || 0.0,
         referenceSolution: JSON.stringify(referenceSolution || {}),
         testCases: JSON.stringify(testCases || []),
-        testPassRate: testPassRate || '10/10 Passed',
-        sandboxStatus: sandboxStatus || 'VERIFIED'
+        // Nothing in this pipeline executes code yet, so a question is only
+        // "verified" when the caller explicitly says so.
+        testPassRate: testPassRate || (Array.isArray(testCases) && testCases.length ? `0/${testCases.length} Pending` : 'Pending'),
+        sandboxStatus: sandboxStatus || 'PENDING'
       }
     });
 

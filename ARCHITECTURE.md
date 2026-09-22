@@ -117,7 +117,7 @@ Stage 6 (Staging & Review) ──▶ Stage 7 (CI/CD & Agile Tracker) ──▶ S
 ### Stage 1: Ingestion & Raw Input Layer
 * **Sources:**
   1. **Student / Faculty Rough Input:** Unstructured interview memories (*e.g. "Amazon asked: given an array, find minimum jumps..."*) or voice note transcripts.
-  2. **Timed Scraper Cron Jobs:** Automated GitHub Actions / Local Cron runners querying LeetCode GraphQL, Codeforces problem archives, and CSES problem sets.
+  2. **Timed Scraper Cron Jobs (`server/src/scraper.ts`, `.github/workflows/scheduled-scraper.yml`):** Nightly GitHub Actions run (also `npm run scrape` locally) querying the LeetCode GraphQL API (statement + examples → sample I/O test cases) and the Codeforces problemset API (title/tags/rating/link). Titles are de-duplicated against the staging table by token similarity (≥ 0.85 ⇒ skipped), tags are mapped to Moodle category paths, and rows are inserted as `PENDING_REVIEW` with `sandboxStatus = PENDING`. Optional `--enrich` uses Groq to formalise the statement and synthesise 10 test cases + a reference solution. CSES has no public API and is not yet scraped.
 * **Normalized Ingestion Payload:**
   ```json
   {

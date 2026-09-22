@@ -196,11 +196,15 @@ export default function PlaneCICDView() {
           iconBg="rgba(139, 92, 246, 0.15)"
           iconFg="var(--plane-accent-purple)"
           title="Nightly Scraper & Ingestion Pipeline (.github/workflows/scheduled-scraper.yml)"
-          subtitle="Scheduled Cron: Nightly at 2:00 AM IST (20:30 UTC)"
+          subtitle="Scheduled Cron: Nightly at 2:00 AM IST (20:30 UTC) · server/src/scraper.ts · manual run with limit / sources / dry-run / enrich"
           badge={<span className="module-badge">Active Cron</span>}
         >
           <p style={{ fontSize: '12px', color: 'var(--plane-text-secondary)', marginBottom: '8px' }}>
-            Automatically fetches newly released problems from LeetCode / Codeforces and passes them to the AI deduplication engine.
+            Fetches the newest problems from the LeetCode GraphQL API (full statement + worked examples as sample I/O) and the
+            Codeforces problemset API (title, tags, rating, link), maps tags to Moodle categories, skips titles ≥ 85% similar to
+            what is already staged, and inserts the rest as <code>PENDING_REVIEW</code> / <code>sandboxStatus: PENDING</code>.
+            With a <code>GROQ_API_KEY</code> secret and <em>enrich</em> enabled it also formalises the statement and synthesises
+            10 test cases + a C++ reference solution. Without a <code>DATABASE_URL</code> secret it runs as a dry run.
           </p>
           <LatestRun run={scraper} offline={offline} />
         </WorkflowCard>

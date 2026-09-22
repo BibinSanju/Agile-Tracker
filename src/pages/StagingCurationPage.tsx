@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Inbox,
   CheckSquare, 
@@ -22,6 +22,7 @@ import { SAMPLE_STAGED_QUESTIONS, StagedQuestion } from '../data/sampleStagedQue
 import PlaneSidebar from '../components/PlaneSidebar';
 import PlaneHeader from '../components/PlaneHeader';
 import { SEED_ARCHITECTURE_ISSUES } from '../data/planeData';
+import { api } from '../services/api';
 
 const CATEGORY_OPTIONS = [
   'DSA/Graphs/Breadth First Search (BFS)',
@@ -35,6 +36,24 @@ const CATEGORY_OPTIONS = [
 
 export default function StagingCurationPage() {
   const [questions, setQuestions] = useState<StagedQuestion[]>(SAMPLE_STAGED_QUESTIONS);
+  const [liveSource, setLiveSource] = useState<'backend' | 'sample'>('sample');
+
+  // Pull the real staging queue (populated by the nightly scraper) when the
+  // backend is reachable; otherwise keep the bundled sample questions.
+  useEffect(() => {
+    let cancelled = false;
+    api.getStagedQuestions().then((rows) => {
+      if (cancelled || !rows || rows.length === 0) return;
+      setQuestions(rows.map((q) => ({
+        ...q,
+        submittedAt: typeof q.submittedAt === 'string' ? q.submittedAt : new Date(q.submittedAt as any).toISOString(),
+        referenceSolution: q.referenceSolution && typeof q.referenceSolution === 'object' ? q.referenceSolution : { language: 'cpp', code: '' },
+        testCases: Array.isArray(q.testCases) ? q.testCases : [],
+      })));
+      setLiveSource('backend');
+    });
+    return () => { cancelled = true; };
+  }, []);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED'>('PENDING');
   const [targetCategory, setTargetCategory] = useState(CATEGORY_OPTIONS[0]);
@@ -74,6 +93,12 @@ export default function StagingCurationPage() {
       }
       return q;
     }));
+
+    // Persist when the queue came from the backend (optimistic; failures are
+    // logged by the API client and the local state stays approved).
+    if (liveSource === 'backend') {
+      selectedIds.forEach((id) => { api.approveStagedQuestion(id, targetCategory); });
+    }
 
     setSuccessToast(`Successfully approved ${selectedIds.length} question(s) into category: ${targetCategory}`);
     setSelectedIds([]);

@@ -1,4 +1,5 @@
 import { PlaneIssue, PlaneMember, PlaneModule, PlaneCycle } from '../data/planeData';
+import type { StagedQuestion } from '../data/sampleStagedQuestions';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -119,6 +120,19 @@ export const api = {
   async deleteCycle(id: string) {
     return fetchJson<{ success: boolean }>(`${API_BASE_URL}/cycles/${id}`, {
       method: 'DELETE'
+    });
+  },
+
+  // Staging (faculty review queue, fed by the nightly scraper)
+  async getStagedQuestions(status?: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED') {
+    const qs = status ? `?status=${status}&limit=100` : '?limit=100';
+    return fetchJson<StagedQuestion[]>(`${API_BASE_URL}/staging/questions${qs}`);
+  },
+
+  async approveStagedQuestion(id: string, confirmedCategory: string) {
+    return fetchJson<StagedQuestion>(`${API_BASE_URL}/staging/questions/${id}/approve`, {
+      method: 'PATCH',
+      body: JSON.stringify({ confirmedCategory })
     });
   },
 

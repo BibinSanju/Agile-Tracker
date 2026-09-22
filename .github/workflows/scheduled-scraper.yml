@@ -4,35 +4,89 @@ on:
   schedule:
     # Runs automatically every night at 2:00 AM IST (20:30 UTC)
     - cron: '30 20 * * *'
-  workflow_dispatch: # Allows faculty to click "Run Scraper Now" manually
+  workflow_dispatch: # Faculty can click "Run workflow" any time
+    inputs:
+      limit:
+        description: 'Problems to fetch per source (1-50)'
+        default: '10'
+        required: false
+      sources:
+        description: 'Comma-separated: leetcode,codeforces'
+        default: 'leetcode,codeforces'
+        required: false
+      dry_run:
+        description: 'Dry run: fetch + de-duplicate, but do not write to the database'
+        type: boolean
+        default: false
+      enrich:
+        description: 'Use Groq to formalise statements and synthesise 10 test cases + a reference solution'
+        type: boolean
+        default: false
+
+concurrency:
+  group: nightly-scraper
+  cancel-in-progress: false
 
 jobs:
   scrape-and-stage:
-    name: 📥 Scrape, AI Validate & Ingest to Staging
+    name: 📥 Scrape, De-duplicate & Ingest to Staging
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: server
     steps:
       - name: 📥 Check out repository
         uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
 
       - name: 🟢 Setup Node.js (v20)
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
 
-      - name: 📦 Install Node & Python Dependencies
-        run: |
-          npm ci
+      - name: 📦 Install server dependencies
+        run: npm ci
 
-      - name: 🕷️ Run Ingestion Agent Simulation
-        run: |
-          echo "Triggering timed question scraper..."
-          echo "Simulating LeetCode/Codeforces ingestion & AI testcase synthesis..."
+      # The scraper writes through Prisma, so the client must be generated.
+      # Dummy URLs are enough for `generate`; the real ones are only needed at
+      # run time and come from repository secrets.
+      - name: ⚙️ Generate Prisma Client
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+        run: npx prisma generate
 
-      - name: 🗄️ Ingest to StagedQuestion Table
+      - name: 🧭 Decide run mode
+        id: mode
+        env:
+          HAS_DB: ${{ secrets.DATABASE_URL != '' }}
+          INPUT_DRY: ${{ inputs.dry_run }}
         run: |
-          echo "✅ Staged new verified questions for Faculty Review."
+          # Fall back to a dry run when no database secret is configured so
+          # the workflow still proves the sources are reachable and parseable
+          # instead of silently doing nothing.
+          if [ "$INPUT_DRY" = "true" ] || [ "$HAS_DB" != "true" ]; then
+            echo "flags=--dry-run" >> "$GITHUB_OUTPUT"
+            [ "$HAS_DB" != "true" ] && echo "::warning::DATABASE_URL secret is not set – running in dry-run mode, nothing will be staged."
+          else
+            echo "flags=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 🕷️ Run scraper
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LIMIT: ${{ inputs.limit || '10' }}
+          SOURCES: ${{ inputs.sources || 'leetcode,codeforces' }}
+          ENRICH: ${{ inputs.enrich }}
+        run: |
+          set -euo pipefail
+          FLAGS="${{ steps.mode.outputs.flags }} --limit $LIMIT --source $SOURCES"
+          if [ "$ENRICH" = "true" ]; then
+            if [ -z "$GROQ_API_KEY" ]; then echo "::warning::enrich requested but GROQ_API_KEY secret is not set – skipping enrichment."; else FLAGS="$FLAGS --enrich"; fi
+          fi
+          echo "npm run scrape -- $FLAGS"
+          npm run scrape -- $FLAGS
