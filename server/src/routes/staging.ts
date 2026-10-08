@@ -1,7 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db.js';
+import {
+  createGroqQuestionAi,
+  DEFAULT_DUPLICATE_THRESHOLD,
+  formatStructuredDescription,
+  processRawQuestion,
+  QuestionDifficulty
+} from '../services/questionIngestion.js';
 
 export const stagingRouter = Router();
+
+function cleanString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
 
 // GET all staged questions
 stagingRouter.get('/questions', async (req: Request, res: Response) => {
@@ -33,35 +44,101 @@ stagingRouter.get('/questions', async (req: Request, res: Response) => {
   }
 });
 
-// POST stage a new question (e.g. from Scraper / AI Synthesizer)
+// POST stage a new question from raw text or a structured ingestion source.
 stagingRouter.post('/questions', async (req: Request, res: Response) => {
   try {
-    const { title, description, source, difficulty, suggestedCategory, similarityScore, referenceSolution, testCases, testPassRate, sandboxStatus } = req.body;
+    const {
+      text,
+      title,
+      description,
+      source,
+      difficulty,
+      suggestedCategory,
+      referenceSolution,
+      testCases
+    } = req.body ?? {};
 
-    if (!title || !description || !suggestedCategory) {
-      return res.status(400).json({ success: false, error: 'Title, description, and suggestedCategory are required.' });
+    const rawText = cleanString(text);
+    const cleanDescription = cleanString(description) || rawText;
+
+    if (!cleanDescription) {
+      return res.status(400).json({ success: false, error: 'Question text is required.' });
     }
+
+    const existing = await prisma.stagedQuestion.findMany({
+      select: { id: true, title: true, description: true }
+    });
+    const configuredThreshold = Number(process.env.DUPLICATE_THRESHOLD);
+    const duplicateThreshold = Number.isFinite(configuredThreshold)
+      ? Math.max(0, Math.min(1, configuredThreshold))
+      : DEFAULT_DUPLICATE_THRESHOLD;
+    const processed = await processRawQuestion(
+      {
+        text: cleanDescription,
+        title: cleanString(title) || undefined,
+        difficulty: cleanString(difficulty) as QuestionDifficulty || undefined,
+        suggestedCategory: cleanString(suggestedCategory) || undefined,
+        source: cleanString(source) || 'Student_Interview'
+      },
+      existing,
+      { ai: createGroqQuestionAi(), duplicateThreshold }
+    );
+
+    if (processed.duplicate) {
+      return res.status(409).json({
+        success: false,
+        code: 'DUPLICATE_QUESTION',
+        error: `A similar question already exists: ${processed.duplicate.title}`,
+        duplicate: processed.duplicate,
+        processing: {
+          mode: processed.processingMode,
+          duplicateChecked: true,
+          threshold: duplicateThreshold,
+          warnings: processed.warnings
+        }
+      });
+    }
+
+    const suppliedTests = Array.isArray(testCases) ? testCases : null;
+    const suppliedSolution = referenceSolution && typeof referenceSolution === 'object' ? referenceSolution : null;
+    const finalTests = suppliedTests ?? processed.assets.testCases;
+    const finalSolution = suppliedSolution ?? processed.assets.referenceSolution;
 
     const staged = await prisma.stagedQuestion.create({
       data: {
-        title: title.trim(),
-        description: description.trim(),
-        source: source || 'Student_Interview',
-        difficulty: difficulty || 'Medium',
-        suggestedCategory,
-        confirmedCategory: suggestedCategory,
+        title: processed.question.title,
+        description: formatStructuredDescription(processed.question),
+        source: cleanString(source) || 'Student_Interview',
+        difficulty: processed.question.difficulty,
+        suggestedCategory: processed.question.suggestedCategory,
+        confirmedCategory: processed.question.suggestedCategory,
         status: 'PENDING_REVIEW',
-        similarityScore: similarityScore || 0.0,
-        referenceSolution: JSON.stringify(referenceSolution || {}),
-        testCases: JSON.stringify(testCases || []),
-        // Nothing in this pipeline executes code yet, so a question is only
-        // "verified" when the caller explicitly says so.
-        testPassRate: testPassRate || (Array.isArray(testCases) && testCases.length ? `0/${testCases.length} Pending` : 'Pending'),
-        sandboxStatus: sandboxStatus || 'PENDING'
+        similarityScore: processed.closestMatch?.similarity || 0,
+        isDuplicate: false,
+        referenceSolution: JSON.stringify(finalSolution),
+        testCases: JSON.stringify(finalTests),
+        // Generated cases are not verified until a sandbox executes them.
+        testPassRate: finalTests.length ? `0/${finalTests.length} Pending` : 'Pending',
+        sandboxStatus: 'PENDING'
       }
     });
 
-    res.status(201).json({ success: true, data: staged });
+    res.status(201).json({
+      success: true,
+      data: {
+        ...staged,
+        referenceSolution: JSON.parse(staged.referenceSolution || '{}'),
+        testCases: JSON.parse(staged.testCases || '[]')
+      },
+      processing: {
+        mode: processed.processingMode,
+        duplicateChecked: true,
+        threshold: duplicateThreshold,
+        closestMatch: processed.closestMatch,
+        assetsGenerated: processed.assets.testCases.length > 0 || Boolean(processed.assets.referenceSolution.code),
+        warnings: processed.warnings
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

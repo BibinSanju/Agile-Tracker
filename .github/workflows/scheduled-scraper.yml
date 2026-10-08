@@ -81,7 +81,9 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           LIMIT: ${{ inputs.limit || '10' }}
           SOURCES: ${{ inputs.sources || 'leetcode,codeforces' }}
-          ENRICH: ${{ inputs.enrich }}
+          # Scheduled runs automatically enrich once GROQ_API_KEY exists.
+          # Manual runs continue to honor the faculty-controlled checkbox.
+          ENRICH: ${{ github.event_name == 'schedule' || inputs.enrich }}
         run: |
           set -euo pipefail
           FLAGS="${{ steps.mode.outputs.flags }} --limit $LIMIT --source $SOURCES"

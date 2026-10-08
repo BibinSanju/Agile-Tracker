@@ -15,6 +15,8 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  Plus,
+  Loader2,
   X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -23,6 +25,21 @@ import PlaneSidebar from '../components/PlaneSidebar';
 import PlaneHeader from '../components/PlaneHeader';
 import { SEED_ARCHITECTURE_ISSUES } from '../data/planeData';
 import { api } from '../services/api';
+
+function normalizeStagedQuestion(question: StagedQuestion): StagedQuestion {
+  const solution = question.referenceSolution as Partial<StagedQuestion['referenceSolution']> | null;
+  return {
+    ...question,
+    submittedAt: typeof question.submittedAt === 'string'
+      ? question.submittedAt
+      : new Date(question.submittedAt as any).toISOString(),
+    referenceSolution: {
+      language: typeof solution?.language === 'string' ? solution.language : '',
+      code: typeof solution?.code === 'string' ? solution.code : ''
+    },
+    testCases: Array.isArray(question.testCases) ? question.testCases : []
+  };
+}
 
 const CATEGORY_OPTIONS = [
   'DSA/Graphs/Breadth First Search (BFS)',
@@ -43,13 +60,8 @@ export default function StagingCurationPage() {
   useEffect(() => {
     let cancelled = false;
     api.getStagedQuestions().then((rows) => {
-      if (cancelled || !rows || rows.length === 0) return;
-      setQuestions(rows.map((q) => ({
-        ...q,
-        submittedAt: typeof q.submittedAt === 'string' ? q.submittedAt : new Date(q.submittedAt as any).toISOString(),
-        referenceSolution: q.referenceSolution && typeof q.referenceSolution === 'object' ? q.referenceSolution : { language: 'cpp', code: '' },
-        testCases: Array.isArray(q.testCases) ? q.testCases : [],
-      })));
+      if (cancelled || rows === null) return;
+      setQuestions(rows.map(normalizeStagedQuestion));
       setLiveSource('backend');
     });
     return () => { cancelled = true; };
@@ -59,6 +71,12 @@ export default function StagingCurationPage() {
   const [targetCategory, setTargetCategory] = useState(CATEGORY_OPTIONS[0]);
   const [inspectQuestion, setInspectQuestion] = useState<StagedQuestion | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [questionText, setQuestionText] = useState('');
+  const [questionTitle, setQuestionTitle] = useState('');
+  const [questionDifficulty, setQuestionDifficulty] = useState<StagedQuestion['difficulty']>('Medium');
+  const [questionCategory, setQuestionCategory] = useState(CATEGORY_OPTIONS[0]);
+  const [isSubmittingQuestion, setIsSubmittingQuestion] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const filteredQuestions = questions.filter(q => {
     if (activeTab === 'PENDING') return q.status === 'PENDING_REVIEW';
@@ -78,6 +96,48 @@ export default function StagingCurationPage() {
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
+  };
+
+  const handleTextIngestion = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = questionText.trim();
+    if (!text) {
+      setSubmissionError('Enter the question text before adding it to the queue.');
+      return;
+    }
+
+    setIsSubmittingQuestion(true);
+    setSubmissionError(null);
+    const result = await api.createStagedQuestion({
+      text,
+      title: questionTitle.trim() || undefined,
+      difficulty: questionDifficulty,
+      suggestedCategory: questionCategory
+    });
+    setIsSubmittingQuestion(false);
+
+    if (result.status === 'duplicate') {
+      setSubmissionError(
+        `Possible duplicate (${Math.round(result.duplicate.similarity * 100)}% match): "${result.duplicate.title}". Nothing was added.`
+      );
+      return;
+    }
+    if (result.status === 'error') {
+      setSubmissionError(`${result.message} Check the API and database configuration, then try again.`);
+      return;
+    }
+
+    const normalized = normalizeStagedQuestion(result.question);
+    setQuestions(previous => liveSource === 'backend'
+      ? [normalized, ...previous.filter(question => question.id !== normalized.id)]
+      : [normalized]);
+    setLiveSource('backend');
+    setActiveTab('PENDING');
+    setQuestionText('');
+    setQuestionTitle('');
+    const modeLabel = result.processing.mode === 'ai' ? 'AI formalized' : 'locally structured';
+    setSuccessToast(`Added "${normalized.title}" to the review queue (${modeLabel}, duplicate checked).`);
+    setTimeout(() => setSuccessToast(null), 4000);
   };
 
   const handleBulkApprove = () => {
@@ -195,6 +255,84 @@ export default function StagingCurationPage() {
               <span>{successToast}</span>
             </div>
           )}
+
+          <form className="plane-box" onSubmit={handleTextIngestion}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', fontWeight: 650, color: 'var(--plane-text-primary)' }}>
+                  <Sparkles size={15} color="var(--plane-accent-blue)" />
+                  <span>Add a question from text</span>
+                </div>
+                <p style={{ margin: '4px 0 0', color: 'var(--plane-text-muted)', fontSize: '11.5px' }}>
+                  Paste a full problem statement. AI structuring activates when configured; duplicate checking always runs before insertion.
+                </p>
+              </div>
+              <span className="module-badge" style={{ whiteSpace: 'nowrap' }}>AI-assisted ingestion</span>
+            </div>
+
+            <label htmlFor="question-text" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>
+              QUESTION TEXT *
+            </label>
+            <textarea
+              id="question-text"
+              value={questionText}
+              onChange={event => setQuestionText(event.target.value)}
+              placeholder="Example: Given an array of integers, return the indices of two numbers that add up to a target..."
+              rows={5}
+              style={{ width: '100%', resize: 'vertical', background: 'var(--plane-bg-base)', border: '1px solid var(--plane-border-subtle)', borderRadius: 'var(--plane-radius-sm)', color: 'var(--plane-text-primary)', padding: '9px 10px', fontFamily: 'inherit', fontSize: '12.5px', lineHeight: 1.5 }}
+            />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label htmlFor="question-title" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>OPTIONAL TITLE</label>
+                <input
+                  id="question-title"
+                  className="plane-select"
+                  value={questionTitle}
+                  onChange={event => setQuestionTitle(event.target.value)}
+                  placeholder="AI or local fallback can infer this"
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label htmlFor="question-difficulty" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>DIFFICULTY</label>
+                <select
+                  id="question-difficulty"
+                  className="plane-select"
+                  value={questionDifficulty}
+                  onChange={event => setQuestionDifficulty(event.target.value as StagedQuestion['difficulty'])}
+                >
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label htmlFor="question-category" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>SUGGESTED CATEGORY</label>
+                <select
+                  id="question-category"
+                  className="plane-select"
+                  value={questionCategory}
+                  onChange={event => setQuestionCategory(event.target.value)}
+                >
+                  {CATEGORY_OPTIONS.map(category => <option key={category} value={category}>{category}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {submissionError && (
+              <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--plane-accent-red)', fontSize: '11.5px' }}>
+                <AlertCircle size={14} />
+                <span>{submissionError}</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="plane-btn plane-btn-primary" type="submit" disabled={isSubmittingQuestion}>
+                {isSubmittingQuestion ? <Loader2 size={13} className="spin" /> : <Plus size={13} />}
+                <span>{isSubmittingQuestion ? 'Processing...' : 'Add to review queue'}</span>
+              </button>
+            </div>
+          </form>
 
           {/* Batch Actions Bar */}
           <div className="plane-box" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px' }}>
@@ -349,8 +487,15 @@ export default function StagingCurationPage() {
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>10 VERIFIED I/O TESTCASES</label>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>
+                  {inspectQuestion.sandboxStatus === 'VERIFIED' ? 'VERIFIED I/O TEST CASES' : 'I/O TEST CASES'}
+                </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '140px', overflowY: 'auto', marginTop: '3px' }}>
+                  {inspectQuestion.testCases.length === 0 && (
+                    <div style={{ background: 'var(--plane-bg-base)', padding: '8px 10px', borderRadius: 'var(--plane-radius-sm)', border: '1px solid var(--plane-border-subtle)', color: 'var(--plane-text-muted)', fontSize: '11.5px' }}>
+                      Test cases have not been generated or verified yet.
+                    </div>
+                  )}
                   {inspectQuestion.testCases.map(tc => (
                     <div key={tc.id} style={{ background: 'var(--plane-bg-base)', padding: '4px 8px', borderRadius: 'var(--plane-radius-xs)', border: '1px solid var(--plane-border-subtle)', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
                       <div><strong style={{ color: 'var(--plane-accent-blue)' }}>Input:</strong> {tc.input.replace(/\n/g, ' ')}</div>
@@ -361,10 +506,18 @@ export default function StagingCurationPage() {
               </div>
 
               <div>
-                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>OPTIMAL CODE ({inspectQuestion.referenceSolution.language.toUpperCase()})</label>
-                <pre style={{ background: 'var(--plane-bg-base)', padding: '8px 10px', borderRadius: 'var(--plane-radius-sm)', fontSize: '11px', fontFamily: 'var(--font-mono)', overflowX: 'auto', border: '1px solid var(--plane-border-subtle)', color: 'var(--plane-text-primary)', marginTop: '3px' }}>
-                  {inspectQuestion.referenceSolution.code}
-                </pre>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>
+                  REFERENCE SOLUTION{inspectQuestion.referenceSolution.language ? ` (${inspectQuestion.referenceSolution.language.toUpperCase()})` : ''}
+                </label>
+                {inspectQuestion.referenceSolution.code ? (
+                  <pre style={{ background: 'var(--plane-bg-base)', padding: '8px 10px', borderRadius: 'var(--plane-radius-sm)', fontSize: '11px', fontFamily: 'var(--font-mono)', overflowX: 'auto', border: '1px solid var(--plane-border-subtle)', color: 'var(--plane-text-primary)', marginTop: '3px' }}>
+                    {inspectQuestion.referenceSolution.code}
+                  </pre>
+                ) : (
+                  <div style={{ background: 'var(--plane-bg-base)', padding: '8px 10px', borderRadius: 'var(--plane-radius-sm)', border: '1px solid var(--plane-border-subtle)', color: 'var(--plane-text-muted)', fontSize: '11.5px', marginTop: '3px' }}>
+                    A reference solution has not been generated yet.
+                  </div>
+                )}
               </div>
             </div>
 

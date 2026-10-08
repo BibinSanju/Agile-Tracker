@@ -1,14 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { Groq } from 'groq-sdk';
+import { createGroqQuestionAi, formalizeRawQuestion, localFormalize } from '../services/questionIngestion.js';
 
 export const aiRouter = Router();
 
 const groqApiKey = process.env.GROQ_API_KEY || '';
-const groq = new Groq({ apiKey: groqApiKey });
 
 // Dedicated client for Agile features to prevent quota exhaustion
 const groqAgileApiKey = process.env.AUTO_GEN_API || groqApiKey;
-const groqAgile = new Groq({ apiKey: groqAgileApiKey });
+const groqAgile = groqAgileApiKey ? new Groq({ apiKey: groqAgileApiKey }) : null;
 
 // POST formalize raw prompt
 aiRouter.post('/formalize', async (req: Request, res: Response) => {
@@ -16,32 +16,15 @@ aiRouter.post('/formalize', async (req: Request, res: Response) => {
     const { rawText, source } = req.body;
     if (!rawText) return res.status(400).json({ success: false, error: 'rawText is required.' });
 
-    const completion = await groq.chat.completions.create({
-      model: 'openai/gpt-oss-120b',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert DSA problem curator for university placement training.
-Given a raw prompt or voice transcript, extract and format it into clean JSON with:
-- title: concise descriptive title
-- description: formal mathematical problem statement
-- inputFormat: standard stream input description
-- outputFormat: standard stream output description
-- constraints: list of mathematical boundary constraints (e.g. 1 <= N <= 10^5)
-- difficulty: Easy, Medium, or Hard
-- suggestedCategory: Category path like DSA/Graphs/BFS or DSA/Dynamic Programming/Knapsack
-Return strictly valid JSON only.`
-        },
-        {
-          role: 'user',
-          content: `Raw Prompt:\n${rawText}\nSource: ${source || 'Student_Interview'}`
-        }
-      ],
-      response_format: { type: 'json_object' }
+    const result = await formalizeRawQuestion(
+      { text: rawText, source: source || 'Student_Interview' },
+      createGroqQuestionAi()
+    );
+    res.json({
+      success: true,
+      data: result.question,
+      processing: { mode: result.processingMode, warnings: result.warnings }
     });
-
-    const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-    res.json({ success: true, data: result });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -53,28 +36,16 @@ aiRouter.post('/synthesize-testcases', async (req: Request, res: Response) => {
     const { title, description, constraints } = req.body;
     if (!title || !description) return res.status(400).json({ success: false, error: 'Title and description are required.' });
 
-    const completion = await groq.chat.completions.create({
-      model: 'openai/gpt-oss-120b',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an elite competitive programming test case generator.
-Generate exactly 10 rigorous standard I/O test cases (3 sample cases, 4 boundary/edge cases, 3 stress cases).
-Also provide verified optimal solution code in C++20 and Python 3.12.
-Return valid JSON with:
-- referenceSolution: { language: "cpp", code: "..." }
-- testCases: array of 10 objects: { id: 1..10, input: "raw stdin string", expectedOutput: "raw stdout string", isSample: boolean }
-Return strictly valid JSON only.`
-        },
-        {
-          role: 'user',
-          content: `Problem Title: ${title}\nDescription: ${description}\nConstraints: ${JSON.stringify(constraints || [])}`
-        }
-      ],
-      response_format: { type: 'json_object' }
-    });
-
-    const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
+    const ai = createGroqQuestionAi();
+    if (!ai) {
+      return res.status(503).json({
+        success: false,
+        error: 'AI testcase generation is not configured. Add GROQ_API_KEY.'
+      });
+    }
+    const structured = localFormalize({ text: description, title });
+    structured.constraints = Array.isArray(constraints) ? constraints.map(String) : structured.constraints;
+    const result = await ai.synthesize(structured);
     res.json({ success: true, data: result });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -86,6 +57,9 @@ aiRouter.post('/generate-criteria', async (req: Request, res: Response) => {
   try {
     const { title, description } = req.body;
     if (!title) return res.status(400).json({ success: false, error: 'Title is required.' });
+    if (!groqAgile) {
+      return res.status(503).json({ success: false, error: 'AI generation is not configured. Add AUTO_GEN_API or GROQ_API_KEY.' });
+    }
 
     const completion = await groqAgile.chat.completions.create({
       model: 'openai/gpt-oss-120b',

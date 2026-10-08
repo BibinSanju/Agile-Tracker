@@ -8,6 +8,10 @@ export const authRouter = Router();
 // Since this is a company platform, only Admins should invite/create users.
 authRouter.post('/invite', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({ success: false, error: 'Supabase authentication is not configured.' });
+    }
+
     const { email, password, name, role, accessLevel, avatarText, avatarColor, assignedTrack } = req.body;
 
     if (!email || !password || !name) {

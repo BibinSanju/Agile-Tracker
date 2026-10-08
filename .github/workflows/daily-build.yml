@@ -12,6 +12,10 @@ jobs:
   quality-gate:
     name: 🩺 Daily Regression & System Health
     uses: ./.github/workflows/ci.yml
+    # GitHub validates the called workflow's guarded promotion permissions
+    # even though scheduled calls cannot satisfy the promotion condition.
+    permissions:
+      contents: write
 
   report:
     name: 🔔 Log Daily Build Result

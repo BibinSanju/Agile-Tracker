@@ -24,6 +24,12 @@
  * claims a verification that did not happen.
  */
 import 'dotenv/config';
+import {
+  createGroqQuestionAi,
+  ExistingQuestion,
+  formatStructuredDescription,
+  processRawQuestion
+} from './services/questionIngestion.js';
 
 type Source = 'LeetCode' | 'Codeforces';
 type Difficulty = 'Easy' | 'Medium' | 'Hard';
@@ -465,37 +471,55 @@ async function main() {
   }
 
   // 2. Load what is already staged (titles are enough for de-duplication)
-  let existing: { title: string; source: string }[] = [];
+  let existing: ExistingQuestion[] = [];
   let prisma: import('@prisma/client').PrismaClient | null = null;
-  if (!opts.dryRun) {
-    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set (use --dry-run to run without a database).');
+  if (process.env.DATABASE_URL) {
     const { prisma: p } = await import('./db.js');
     prisma = p;
-    existing = await prisma.stagedQuestion.findMany({ select: { title: true, source: true } });
+    existing = await prisma.stagedQuestion.findMany({ select: { id: true, title: true, description: true } });
     console.log(`  · ${existing.length} question(s) already staged`);
+  } else if (!opts.dryRun) {
+    throw new Error('DATABASE_URL is not set (use --dry-run to run without a database).');
   }
 
   // 3. De-duplicate, enrich, insert
   const outcomes: Outcome[] = [];
-  const seenThisRun: string[] = [];
+  const seenThisRun: ExistingQuestion[] = [];
+  const ai = opts.enrich ? createGroqQuestionAi() : null;
+  if (opts.enrich && !ai) console.warn('  ! --enrich requested without GROQ_API_KEY; using local structuring only');
+
   for (let c of candidates) {
-    const pool = [...existing.map((e) => e.title), ...seenThisRun];
-    let best = 0;
-    let matched: string | undefined;
-    for (const t of pool) {
-      const sim = normalizeTitle(t) === normalizeTitle(c.title) ? 1 : titleSimilarity(t, c.title);
-      if (sim > best) {
-        best = sim;
-        matched = t;
-      }
-    }
-    if (best >= opts.duplicateThreshold) {
+    const processed = await processRawQuestion(
+      {
+        text: c.description,
+        title: c.title,
+        difficulty: c.difficulty,
+        suggestedCategory: c.suggestedCategory,
+        source: c.source
+      },
+      [...existing, ...seenThisRun],
+      { ai, duplicateThreshold: opts.duplicateThreshold }
+    );
+    const best = processed.closestMatch?.similarity ?? 0;
+    const matched = processed.closestMatch?.title;
+
+    if (processed.duplicate) {
       outcomes.push({ candidate: c, action: 'duplicate', similarity: best, matchedTitle: matched });
       continue;
     }
-    seenThisRun.push(c.title);
 
-    if (opts.enrich) c = await enrichWithGroq(c);
+    c = {
+      ...c,
+      title: processed.question.title,
+      description: formatStructuredDescription(processed.question),
+      difficulty: processed.question.difficulty,
+      suggestedCategory: processed.question.suggestedCategory,
+      testCases: processed.assets.testCases.length ? processed.assets.testCases : c.testCases,
+      referenceSolution: processed.assets.referenceSolution.code
+        ? processed.assets.referenceSolution
+        : c.referenceSolution
+    };
+    seenThisRun.push({ id: `current-run-${seenThisRun.length}`, title: c.title, description: c.description });
 
     if (opts.dryRun || !prisma) {
       outcomes.push({ candidate: c, action: 'would-stage', similarity: best });

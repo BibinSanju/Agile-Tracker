@@ -91,6 +91,9 @@ jobs:
       - name: 🔍 TypeScript Build Check
         run: npx tsc --noEmit
 
+      - name: Ingestion service unit tests
+        run: npm test
+
   # ---------------------------------------------------------------------------
   # Auto-promotion: commits pushed to `staging` are merged into `main` only
   # after BOTH jobs above succeed for that exact commit. `main` therefore never

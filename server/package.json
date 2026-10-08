@@ -10,6 +10,7 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "tsx src/seed.ts",
+    "test": "tsx --test src/services/questionIngestion.test.ts",
     "scrape": "tsx src/scraper.ts",
     "scrape:dry": "tsx src/scraper.ts --dry-run"
   },

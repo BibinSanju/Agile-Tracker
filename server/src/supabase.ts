@@ -3,25 +3,23 @@ import WebSocket from 'ws';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from './db.js';
 
-// Polyfill WebSocket globally for Node 20 so Supabase Realtime works perfectly
+// Polyfill WebSocket globally for Node 20 so Supabase Realtime works.
 (globalThis as any).WebSocket = WebSocket;
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('\n\n❌ FATAL ERROR: You forgot to add SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY to your Render Environment Variables! The server cannot start without them.\n\n');
-}
+// Credentials are optional during local development. Protected auth routes
+// return 503 until they are configured instead of crashing the whole API.
+export const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null;
 
-// Use Service Role key for admin privileges in the backend
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
-
-// Extend Express Request to include user and member info
 declare global {
   namespace Express {
     interface Request {
@@ -31,8 +29,14 @@ declare global {
   }
 }
 
-// Middleware to authenticate requests via Bearer Token (Supabase JWT)
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
+  if (!supabase) {
+    return res.status(503).json({
+      success: false,
+      error: 'Authentication is not configured. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
+    });
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, error: 'Unauthorized: Missing or invalid token' });
@@ -48,22 +52,17 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
     req.user = user;
 
-    // Fetch the corresponding member record from our database
     const member = await prisma.member.findUnique({
       where: { authId: user.id }
     });
 
-    if (member) {
-      req.member = member;
-    }
-
+    if (member) req.member = member;
     next();
-  } catch (error) {
+  } catch {
     res.status(401).json({ success: false, error: 'Unauthorized: Token verification failed' });
   }
 };
 
-// Middleware to enforce ADMIN role
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.member) {
     return res.status(403).json({ success: false, error: 'Forbidden: Member profile not found' });
