@@ -80,8 +80,8 @@ model StagedQuestion {
   title              String
   description        String
   source             String   @default("Student_Interview") // Student_Interview, LeetCode, Codeforces, CSES
-  difficulty         String   @default("Medium") // Easy, Medium, Hard
-  suggestedCategory  String
+  difficulty         String   @default("Unassigned") // Unassigned until faculty review, then Easy, Medium, Hard
+  suggestedCategory  String   @default("Unassigned")
   confirmedCategory  String?
   status             String   @default("PENDING_REVIEW") // PENDING_REVIEW, APPROVED, REJECTED
   similarityScore    Float    @default(0.0)

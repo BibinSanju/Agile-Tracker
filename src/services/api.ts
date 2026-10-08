@@ -147,9 +147,7 @@ export const api = {
 
   async createStagedQuestion(input: {
     text: string;
-    title?: string;
-    difficulty?: StagedQuestion['difficulty'];
-    suggestedCategory?: string;
+    title: string;
   }): Promise<StagedQuestionIngestionResult> {
     try {
       const response = await fetch(`${API_BASE_URL}/staging/questions`, {
@@ -181,10 +179,10 @@ export const api = {
     }
   },
 
-  async approveStagedQuestion(id: string, confirmedCategory: string) {
+  async approveStagedQuestion(id: string, confirmedCategory: string, difficulty: 'Easy' | 'Medium' | 'Hard') {
     return fetchJson<StagedQuestion>(`${API_BASE_URL}/staging/questions/${id}/approve`, {
       method: 'PATCH',
-      body: JSON.stringify({ confirmedCategory })
+      body: JSON.stringify({ confirmedCategory, difficulty })
     });
   },
 

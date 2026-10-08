@@ -10,7 +10,7 @@ export interface StagedQuestion {
   title: string;
   description: string;
   source: 'Student_Interview' | 'LeetCode' | 'Codeforces' | 'CSES';
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  difficulty: 'Unassigned' | 'Easy' | 'Medium' | 'Hard';
   suggestedCategory: string;
   confirmedCategory?: string;
   status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';

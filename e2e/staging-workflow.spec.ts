@@ -16,6 +16,9 @@ test.describe('Faculty Staging Curation & Moodle XML Export Flow', () => {
     const firstCheckbox = page.locator('input[type="checkbox"]').nth(1);
     await firstCheckbox.click();
 
+    await page.getByLabel('Faculty category').selectOption('DSA/Graphs/Breadth First Search (BFS)');
+    await page.getByLabel('Faculty difficulty').selectOption('Medium');
+
     // Verify bulk approve button is active
     const approveBtn = page.locator('button:has-text("Approve Selected")');
     await expect(approveBtn).toBeEnabled();
@@ -61,9 +64,9 @@ test.describe('Faculty Staging Curation & Moodle XML Export Flow', () => {
             title: 'Find the first repeated number',
             description: 'Find the first repeated number in an integer array and return -1 when every value is unique.',
             source: 'Student_Interview',
-            difficulty: 'Medium',
-            suggestedCategory: 'DSA/Graphs/Breadth First Search (BFS)',
-            confirmedCategory: 'DSA/Graphs/Breadth First Search (BFS)',
+            difficulty: 'Unassigned',
+            suggestedCategory: 'Unassigned',
+            confirmedCategory: null,
             status: 'PENDING_REVIEW',
             similarityScore: 0,
             isDuplicate: false,
@@ -85,12 +88,25 @@ test.describe('Faculty Staging Curation & Moodle XML Export Flow', () => {
       });
     });
 
+    const title = 'Find the first repeated number';
     const question = 'Find the first repeated number in an integer array and return -1 when every value is unique.';
-    await page.getByLabel('QUESTION TEXT *').fill(question);
+    await page.getByLabel('TITLE *').fill(title);
+    await page.getByLabel('DESCRIPTION *').fill(question);
     await page.getByRole('button', { name: 'Add to review queue' }).click();
 
     await expect(page.getByText(/Added "Find the first repeated number".*AI formalized, duplicate checked/)).toBeVisible();
     await expect(page.getByText('Find the first repeated number', { exact: true })).toBeVisible();
-    expect(submitted).toMatchObject({ text: question, difficulty: 'Medium', source: 'Student_Interview' });
+    expect(submitted).toEqual({ title, text: question, source: 'Student_Interview' });
+
+    const stagedRow = page.locator('.plane-issue-row').filter({ hasText: title });
+    await expect(stagedRow).toContainText('Awaiting category');
+    await expect(stagedRow).toContainText('Awaiting difficulty');
+    await stagedRow.getByRole('button', { name: 'Inspect' }).click();
+
+    const approveButton = page.getByRole('button', { name: 'Approve to Live DB' });
+    await expect(approveButton).toBeDisabled();
+    await page.getByLabel('Review category').selectOption('DSA/Graphs/Breadth First Search (BFS)');
+    await page.getByLabel('Review difficulty').selectOption('Medium');
+    await expect(approveButton).toBeEnabled();
   });
 });

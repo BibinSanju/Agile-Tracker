@@ -4,8 +4,7 @@ import {
   createGroqQuestionAi,
   DEFAULT_DUPLICATE_THRESHOLD,
   formatStructuredDescription,
-  processRawQuestion,
-  QuestionDifficulty
+  processRawQuestion
 } from '../services/questionIngestion.js';
 
 export const stagingRouter = Router();
@@ -52,8 +51,6 @@ stagingRouter.post('/questions', async (req: Request, res: Response) => {
       title,
       description,
       source,
-      difficulty,
-      suggestedCategory,
       referenceSolution,
       testCases
     } = req.body ?? {};
@@ -61,8 +58,9 @@ stagingRouter.post('/questions', async (req: Request, res: Response) => {
     const rawText = cleanString(text);
     const cleanDescription = cleanString(description) || rawText;
 
-    if (!cleanDescription) {
-      return res.status(400).json({ success: false, error: 'Question text is required.' });
+    const cleanTitle = cleanString(title);
+    if (!cleanTitle || !cleanDescription) {
+      return res.status(400).json({ success: false, error: 'Title and question description are required.' });
     }
 
     const existing = await prisma.stagedQuestion.findMany({
@@ -75,9 +73,7 @@ stagingRouter.post('/questions', async (req: Request, res: Response) => {
     const processed = await processRawQuestion(
       {
         text: cleanDescription,
-        title: cleanString(title) || undefined,
-        difficulty: cleanString(difficulty) as QuestionDifficulty || undefined,
-        suggestedCategory: cleanString(suggestedCategory) || undefined,
+        title: cleanTitle,
         source: cleanString(source) || 'Student_Interview'
       },
       existing,
@@ -109,9 +105,11 @@ stagingRouter.post('/questions', async (req: Request, res: Response) => {
         title: processed.question.title,
         description: formatStructuredDescription(processed.question),
         source: cleanString(source) || 'Student_Interview',
-        difficulty: processed.question.difficulty,
-        suggestedCategory: processed.question.suggestedCategory,
-        confirmedCategory: processed.question.suggestedCategory,
+        // Student ingestion captures only the question itself. Faculty assigns
+        // classification metadata during review.
+        difficulty: 'Unassigned',
+        suggestedCategory: 'Unassigned',
+        confirmedCategory: null,
         status: 'PENDING_REVIEW',
         similarityScore: processed.closestMatch?.similarity || 0,
         isDuplicate: false,
@@ -148,13 +146,23 @@ stagingRouter.post('/questions', async (req: Request, res: Response) => {
 stagingRouter.patch('/questions/:id/approve', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const { confirmedCategory } = req.body;
+    const confirmedCategory = cleanString(req.body?.confirmedCategory);
+    const difficulty = cleanString(req.body?.difficulty);
+    const validDifficulties = new Set(['Easy', 'Medium', 'Hard']);
+
+    if (!confirmedCategory || confirmedCategory === 'Unassigned' || !validDifficulties.has(difficulty)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Faculty must assign a category and difficulty before approval.'
+      });
+    }
 
     const updated = await prisma.stagedQuestion.update({
       where: { id },
       data: {
         status: 'APPROVED',
-        confirmedCategory: confirmedCategory || undefined
+        confirmedCategory,
+        difficulty
       }
     });
 

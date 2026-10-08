@@ -51,6 +51,8 @@ const CATEGORY_OPTIONS = [
   'Operating Systems/Process Scheduling'
 ];
 
+type ReviewDifficulty = 'Easy' | 'Medium' | 'Hard';
+
 export default function StagingCurationPage() {
   const [questions, setQuestions] = useState<StagedQuestion[]>(SAMPLE_STAGED_QUESTIONS);
   const [liveSource, setLiveSource] = useState<'backend' | 'sample'>('sample');
@@ -68,13 +70,12 @@ export default function StagingCurationPage() {
   }, []);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED'>('PENDING');
-  const [targetCategory, setTargetCategory] = useState(CATEGORY_OPTIONS[0]);
+  const [targetCategory, setTargetCategory] = useState('');
+  const [targetDifficulty, setTargetDifficulty] = useState<ReviewDifficulty | ''>('');
   const [inspectQuestion, setInspectQuestion] = useState<StagedQuestion | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [questionText, setQuestionText] = useState('');
   const [questionTitle, setQuestionTitle] = useState('');
-  const [questionDifficulty, setQuestionDifficulty] = useState<StagedQuestion['difficulty']>('Medium');
-  const [questionCategory, setQuestionCategory] = useState(CATEGORY_OPTIONS[0]);
   const [isSubmittingQuestion, setIsSubmittingQuestion] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
@@ -101,8 +102,9 @@ export default function StagingCurationPage() {
   const handleTextIngestion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const text = questionText.trim();
-    if (!text) {
-      setSubmissionError('Enter the question text before adding it to the queue.');
+    const title = questionTitle.trim();
+    if (!title || !text) {
+      setSubmissionError('Enter both a title and description before adding the question.');
       return;
     }
 
@@ -110,9 +112,7 @@ export default function StagingCurationPage() {
     setSubmissionError(null);
     const result = await api.createStagedQuestion({
       text,
-      title: questionTitle.trim() || undefined,
-      difficulty: questionDifficulty,
-      suggestedCategory: questionCategory
+      title
     });
     setIsSubmittingQuestion(false);
 
@@ -141,14 +141,15 @@ export default function StagingCurationPage() {
   };
 
   const handleBulkApprove = () => {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || !targetCategory || !targetDifficulty) return;
 
     setQuestions(prev => prev.map(q => {
       if (selectedIds.includes(q.id)) {
         return {
           ...q,
           status: 'APPROVED',
-          confirmedCategory: targetCategory
+          confirmedCategory: targetCategory,
+          difficulty: targetDifficulty
         };
       }
       return q;
@@ -157,12 +158,36 @@ export default function StagingCurationPage() {
     // Persist when the queue came from the backend (optimistic; failures are
     // logged by the API client and the local state stays approved).
     if (liveSource === 'backend') {
-      selectedIds.forEach((id) => { api.approveStagedQuestion(id, targetCategory); });
+      selectedIds.forEach((id) => { api.approveStagedQuestion(id, targetCategory, targetDifficulty); });
     }
 
-    setSuccessToast(`Successfully approved ${selectedIds.length} question(s) into category: ${targetCategory}`);
+    setSuccessToast(`Successfully approved ${selectedIds.length} question(s) as ${targetDifficulty} in ${targetCategory}.`);
     setSelectedIds([]);
+    setTargetCategory('');
+    setTargetDifficulty('');
     confetti({ particleCount: 50, spread: 50, origin: { y: 0.7 } });
+    setTimeout(() => setSuccessToast(null), 4000);
+  };
+
+  const openInspector = (question: StagedQuestion) => {
+    setInspectQuestion(question);
+    const category = question.confirmedCategory || question.suggestedCategory;
+    setTargetCategory(category === 'Unassigned' ? '' : category);
+    setTargetDifficulty(question.difficulty === 'Unassigned' ? '' : question.difficulty);
+  };
+
+  const handleInspectorApprove = () => {
+    if (!inspectQuestion || !targetCategory || !targetDifficulty) return;
+    const approvedId = inspectQuestion.id;
+    const approvedTitle = inspectQuestion.title;
+    setQuestions(previous => previous.map(question => question.id === approvedId
+      ? { ...question, status: 'APPROVED', confirmedCategory: targetCategory, difficulty: targetDifficulty }
+      : question));
+    if (liveSource === 'backend') {
+      void api.approveStagedQuestion(approvedId, targetCategory, targetDifficulty);
+    }
+    setInspectQuestion(null);
+    setSuccessToast(`Approved "${approvedTitle}" as ${targetDifficulty} in ${targetCategory}.`);
     setTimeout(() => setSuccessToast(null), 4000);
   };
 
@@ -264,60 +289,34 @@ export default function StagingCurationPage() {
                   <span>Add a question from text</span>
                 </div>
                 <p style={{ margin: '4px 0 0', color: 'var(--plane-text-muted)', fontSize: '11.5px' }}>
-                  Paste a full problem statement. AI structuring activates when configured; duplicate checking always runs before insertion.
+                  Submit only the title and description. Faculty assigns difficulty and category during review; duplicate checking always runs before insertion.
                 </p>
               </div>
               <span className="module-badge" style={{ whiteSpace: 'nowrap' }}>AI-assisted ingestion</span>
             </div>
 
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label htmlFor="question-title" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>TITLE *</label>
+              <input
+                id="question-title"
+                className="plane-select"
+                value={questionTitle}
+                onChange={event => setQuestionTitle(event.target.value)}
+                placeholder="Example: Two Sum"
+              />
+            </div>
+
             <label htmlFor="question-text" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>
-              QUESTION TEXT *
+              DESCRIPTION *
             </label>
             <textarea
               id="question-text"
               value={questionText}
               onChange={event => setQuestionText(event.target.value)}
-              placeholder="Example: Given an array of integers, return the indices of two numbers that add up to a target..."
+              placeholder="Describe the problem, expected input, and expected output..."
               rows={5}
               style={{ width: '100%', resize: 'vertical', background: 'var(--plane-bg-base)', border: '1px solid var(--plane-border-subtle)', borderRadius: 'var(--plane-radius-sm)', color: 'var(--plane-text-primary)', padding: '9px 10px', fontFamily: 'inherit', fontSize: '12.5px', lineHeight: 1.5 }}
             />
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label htmlFor="question-title" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>OPTIONAL TITLE</label>
-                <input
-                  id="question-title"
-                  className="plane-select"
-                  value={questionTitle}
-                  onChange={event => setQuestionTitle(event.target.value)}
-                  placeholder="AI or local fallback can infer this"
-                />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label htmlFor="question-difficulty" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>DIFFICULTY</label>
-                <select
-                  id="question-difficulty"
-                  className="plane-select"
-                  value={questionDifficulty}
-                  onChange={event => setQuestionDifficulty(event.target.value as StagedQuestion['difficulty'])}
-                >
-                  <option value="Easy">Easy</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Hard">Hard</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label htmlFor="question-category" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>SUGGESTED CATEGORY</label>
-                <select
-                  id="question-category"
-                  className="plane-select"
-                  value={questionCategory}
-                  onChange={event => setQuestionCategory(event.target.value)}
-                >
-                  {CATEGORY_OPTIONS.map(category => <option key={category} value={category}>{category}</option>)}
-                </select>
-              </div>
-            </div>
 
             {submissionError && (
               <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--plane-accent-red)', fontSize: '11.5px' }}>
@@ -358,22 +357,35 @@ export default function StagingCurationPage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11.5px', color: 'var(--plane-text-muted)' }}>Target Category:</span>
               <select 
                 className="plane-select"
+                aria-label="Faculty category"
                 value={targetCategory}
                 onChange={e => setTargetCategory(e.target.value)}
               >
+                <option value="">Select category</option>
                 {CATEGORY_OPTIONS.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
 
+              <select
+                className="plane-select"
+                aria-label="Faculty difficulty"
+                value={targetDifficulty}
+                onChange={event => setTargetDifficulty(event.target.value as ReviewDifficulty | '')}
+              >
+                <option value="">Select difficulty</option>
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+              </select>
+
               <button 
                 className="plane-btn plane-btn-primary"
-                disabled={selectedIds.length === 0}
+                disabled={selectedIds.length === 0 || !targetCategory || !targetDifficulty}
                 onClick={handleBulkApprove}
-                style={{ opacity: selectedIds.length === 0 ? 0.5 : 1 }}
+                style={{ opacity: selectedIds.length === 0 || !targetCategory || !targetDifficulty ? 0.5 : 1 }}
               >
                 <Check size={13} />
                 <span>Approve Selected ({selectedIds.length})</span>
@@ -432,8 +444,9 @@ export default function StagingCurationPage() {
                     <div className="issue-meta-items" style={{ marginLeft: 'auto' }}>
                       <span className="module-badge">{q.source}</span>
                       <span className="module-badge" style={{ color: 'var(--plane-accent-blue)', fontFamily: 'var(--font-mono)' }}>
-                        {q.confirmedCategory || q.suggestedCategory}
+                        {(q.confirmedCategory || q.suggestedCategory) === 'Unassigned' ? 'Awaiting category' : q.confirmedCategory || q.suggestedCategory}
                       </span>
+                      <span className="module-badge">{q.difficulty === 'Unassigned' ? 'Awaiting difficulty' : q.difficulty}</span>
                       
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', color: 'var(--plane-accent-emerald)', fontWeight: 600 }}>
                         <ShieldCheck size={13} />
@@ -449,7 +462,7 @@ export default function StagingCurationPage() {
                         style={{ padding: '2px 6px', fontSize: '11px' }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setInspectQuestion(q);
+                          openInspector(q);
                         }}
                       >
                         <Eye size={12} />
@@ -485,6 +498,34 @@ export default function StagingCurationPage() {
                   {inspectQuestion.description}
                 </div>
               </div>
+
+              {inspectQuestion.status !== 'APPROVED' && (
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>FACULTY CLASSIFICATION *</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', marginTop: '3px' }}>
+                    <select
+                      className="plane-select"
+                      aria-label="Review category"
+                      value={targetCategory}
+                      onChange={event => setTargetCategory(event.target.value)}
+                    >
+                      <option value="">Select category</option>
+                      {CATEGORY_OPTIONS.map(category => <option key={category} value={category}>{category}</option>)}
+                    </select>
+                    <select
+                      className="plane-select"
+                      aria-label="Review difficulty"
+                      value={targetDifficulty}
+                      onChange={event => setTargetDifficulty(event.target.value as ReviewDifficulty | '')}
+                    >
+                      <option value="">Select difficulty</option>
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--plane-text-muted)' }}>
@@ -526,12 +567,9 @@ export default function StagingCurationPage() {
               {inspectQuestion.status !== 'APPROVED' && (
                 <button 
                   className="plane-btn plane-btn-primary"
-                  onClick={() => {
-                    setQuestions(prev => prev.map(q => q.id === inspectQuestion.id ? { ...q, status: 'APPROVED' } : q));
-                    setInspectQuestion(null);
-                    setSuccessToast(`Approved "${inspectQuestion.title}" for production!`);
-                    setTimeout(() => setSuccessToast(null), 4000);
-                  }}
+                  disabled={!targetCategory || !targetDifficulty}
+                  onClick={handleInspectorApprove}
+                  style={{ opacity: !targetCategory || !targetDifficulty ? 0.5 : 1 }}
                 >
                   <Check size={13} />
                   <span>Approve to Live DB</span>
